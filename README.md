@@ -36,27 +36,26 @@ and factor timing.
 - **Transaction costs**: 10 bps one-way
 
 ## Project Structure
-Equity-Factor-Research/
-├── data/
-│   ├── sp500_tickers.csv      # S&P 500 ticker list
-│   ├── download_data.py       # Download price data from Yahoo Finance
-│   ├── close_prices.csv       # (generated, not tracked)
-│   └── volumes.csv            # (generated, not tracked)
-├── factors/
-│   ├── momentum.py            # 12-1 momentum factor
-│   ├── mean_reversion.py      # 5-day mean reversion factor
-│   └── volatility.py          # Low volatility factor
-├── backtest/
-│   ├── engine.py              # Backtest engine
-│   ├── portfolio.py           # Long-short portfolio construction
-│   └── metrics.py             # Sharpe, max drawdown, turnover, etc.
-└── analysis/
-└── factor_analysis.py     # IC, quantile returns (WIP)
+
+    Equity-Factor-Research/
+    ├── data/
+    │   ├── sp500_tickers.csv      # S&P 500 ticker list
+    │   ├── download_data.py       # Download price data from Yahoo Finance
+    │   ├── close_prices.csv       # (generated, not tracked)
+    │   └── volumes.csv            # (generated, not tracked)
+    ├── factors/
+    │   ├── momentum.py            # 12-1 momentum factor
+    │   ├── mean_reversion.py      # 5-day mean reversion factor
+    │   └── volatility.py          # Low volatility factor
+    ├── backtest/
+    │   ├── engine.py              # Backtest engine
+    │   ├── portfolio.py           # Long-short portfolio construction
+    │   └── metrics.py             # Sharpe, max drawdown, turnover, etc.
+    └── analysis/
+        └── factor_analysis.py     # IC, quantile returns (WIP)
 
 ## How to Run
 
-```bash
-pip install -r requirements.txt
-python3 data/download_data.py
-python3 -m backtest.engine
-```
+    pip install -r requirements.txt
+    python3 data/download_data.py
+    python3 -m backtest.engine
