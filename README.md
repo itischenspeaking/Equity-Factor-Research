@@ -9,6 +9,7 @@ and evaluates performance with standard risk metrics.
 - **Momentum (12-1)**: long past winners, short past losers, skipping the most recent month to avoid short-term reversal
 - **Mean Reversion (5d)**: short-term contrarian signal based on 5-day returns
 - **Low Volatility (63d)**: long low-vol stocks, short high-vol stocks
+- **Pairs Trading (Statistical Arbitrage)**: cointegration-based mean reversion on stock pairs, with z-score entry/exit signals
 
 ## Backtest Results
 
@@ -25,6 +26,21 @@ signal is too short-lived for monthly rebalancing. Low volatility's
 short leg (high-vol tech) dramatically outperformed, driving large
 losses. These results highlight the importance of regime awareness
 and factor timing.
+
+### Pairs Trading Results (out-of-sample)
+
+| Pair     | Ann. Return | Ann. Vol | Sharpe | Max DD  | Trades |
+|----------|-------------|----------|--------|---------|--------|
+| CRM/ADBE | -2.54%      | 16.80%   | -0.15  | -29.12% | 12     |
+| PEP/PG   | -2.41%      | 5.00%    | -0.48  | -8.14%  | 7      |
+| KO/PEP   | -2.53%      | 5.94%    | -0.43  | -11.91% | 9      |
+| KO/PG    | -0.76%      | 7.10%    | -0.11  | -17.00% | 17     |
+
+All pairs were selected using Engle-Granger cointegration on the
+formation period (first 70% of data) and tested out-of-sample on the
+remaining 30%. Returns are mildly negative, consistent with the
+well-documented decline in pairs trading profitability since the
+2000s as more participants exploit the same signals.
 
 ## Methodology
 
@@ -46,7 +62,8 @@ and factor timing.
     ├── factors/
     │   ├── momentum.py            # 12-1 momentum factor
     │   ├── mean_reversion.py      # 5-day mean reversion factor
-    │   └── volatility.py          # Low volatility factor
+    │   ├── volatility.py          # Low volatility factor
+    │   └── pairs_trading.py       # Pairs trading (cointegration + z-score)
     ├── backtest/
     │   ├── engine.py              # Backtest engine
     │   ├── portfolio.py           # Long-short portfolio construction
