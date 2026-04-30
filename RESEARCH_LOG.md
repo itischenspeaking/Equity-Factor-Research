@@ -1,6 +1,6 @@
 # Research Log
 
-## 2026-04-30 | Day 1: Project Setup + Factor Backtests + Pairs Trading
+## 2026-04-28 ---- 2026-05-03 | Week 1: Project Setup + Factor Backtests + Pairs Trading
 
 ### What I did
 
