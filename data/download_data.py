@@ -10,10 +10,16 @@ import os
 
 
 def get_tickers():
-    """Read ticker list from local CSV."""
+    """
+    Read ticker list from local CSV.
+
+    We use a static local file instead of scraping Wikipedia's S&P 500
+    page at runtime because pandas.read_html() is blocked by Wikipedia's
+    HTTP 403 policy. A local file also makes the pipeline reproducible
+    without depending on external HTML structure.
+    """
     df = pd.read_csv("data/sp500_tickers.csv")
     return df["ticker"].tolist()
-
 
 def download_price_data(tickers, start="2015-01-01", end="2024-12-31"):
     """
