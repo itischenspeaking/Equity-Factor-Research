@@ -1,78 +1,81 @@
 # Equity Factor Research
 
-A from-scratch factor research pipeline in Python. Constructs classic
-equity factors from raw price data, backtests long-short portfolios,
-and evaluates performance with standard risk metrics.
+Equity factor research and statistical arbitrage from scratch in
+Python. This project implements classic cross-sectional factors and
+a basket stat arb strategy, backtests them on 462 S&P 500 stocks
+(2015–2024), and documents findings in a weekly research log.
 
-## Factors Implemented
-
-- **Momentum (12-1)**: long past winners, short past losers, skipping the most recent month to avoid short-term reversal
-- **Mean Reversion (5d)**: short-term contrarian signal based on 5-day returns
-- **Low Volatility (63d)**: long low-vol stocks, short high-vol stocks
-- **Pairs Trading (Statistical Arbitrage)**: cointegration-based mean reversion on stock pairs, with z-score entry/exit signals
-
-## Backtest Results
-
-| Factor           | Ann. Return | Ann. Vol | Sharpe | Max Drawdown |
-|------------------|-------------|----------|--------|--------------|
-| Momentum (12-1)  | -5.98%      | 23.14%   | -0.26  | -57.55%      |
-| Mean Reversion   | 0.11%       | 16.01%   | 0.01   | -39.28%      |
-| Low Volatility   | -16.54%     | 25.24%   | -0.66  | -88.28%      |
-
-None of the three factors delivered strong positive returns in this
-period. Momentum suffered from sharp reversals during the 2020 COVID
-crash and subsequent recovery. Mean reversion broke even — the 5-day
-signal is too short-lived for monthly rebalancing. Low volatility's
-short leg (high-vol tech) dramatically outperformed, driving large
-losses. These results highlight the importance of regime awareness
-and factor timing.
-
-### Pairs Trading Results (out-of-sample)
-
-| Pair     | Ann. Return | Ann. Vol | Sharpe | Max DD  | Trades |
-|----------|-------------|----------|--------|---------|--------|
-| CRM/ADBE | -2.54%      | 16.80%   | -0.15  | -29.12% | 12     |
-| PEP/PG   | -2.41%      | 5.00%    | -0.48  | -8.14%  | 7      |
-| KO/PEP   | -2.53%      | 5.94%    | -0.43  | -11.91% | 9      |
-| KO/PG    | -0.76%      | 7.10%    | -0.11  | -17.00% | 17     |
-
-All pairs were selected using Engle-Granger cointegration on the
-formation period (first 70% of data) and tested out-of-sample on the
-remaining 30%. Returns are mildly negative, consistent with the
-well-documented decline in pairs trading profitability since the
-2000s as more participants exploit the same signals.
-
-## Methodology
-
-- **Universe**: 462 S&P 500 constituents
-- **Period**: 2015-01-02 to 2024-12-30 (daily data)
-- **Data source**: Yahoo Finance via yfinance
-- **Rebalance**: Monthly (month-end)
-- **Portfolio**: Decile long-short, equal-weighted
-- **Transaction costs**: 10 bps one-way
-
-## Project Structure
-
-    Equity-Factor-Research/
-    ├── data/
-    │   ├── sp500_tickers.csv      # S&P 500 ticker list
-    │   ├── download_data.py       # Download price data from Yahoo Finance
-    │   ├── close_prices.csv       # (generated, not tracked)
-    │   └── volumes.csv            # (generated, not tracked)
-    ├── factors/
-    │   ├── momentum.py            # 12-1 momentum factor
-    │   ├── mean_reversion.py      # 5-day mean reversion factor
-    │   ├── volatility.py          # Low volatility factor
-    │   └── pairs_trading.py       # Pairs trading (cointegration + z-score)
-    ├── backtest/
-    │   ├── engine.py              # Backtest engine
-    │   ├── portfolio.py           # Long-short portfolio construction
-    │   └── metrics.py             # Sharpe, max drawdown, turnover, etc.
-    └── analysis/
-        └── factor_analysis.py     # IC, quantile returns (WIP)
-
-## How to Run
+## Quick Start
 
     pip install -r requirements.txt
     python3 data/download_data.py
     python3 -m backtest.engine
+    python3 factors/pairs_trading.py
+    python3 factors/post_pairs.py
+    python3 -m analysis.factor_analysis
+
+## Project Structure
+
+    Equity-Factor-Research/
+    │
+    ├── data/
+    │   ├── sp500_tickers.csv         # S&P 500 ticker list (static)
+    │   └── download_data.py          # Download daily prices via yfinance
+    │
+    ├── factors/
+    │   ├── momentum.py               # 12-1 momentum
+    │   ├── mean_reversion.py         # 5-day short-term reversal
+    │   ├── volatility.py             # Low volatility factor
+    │   ├── pairs_trading.py          # Classical pairs (cointegration + z-score)
+    │   └── post_pairs.py             # Basket stat arb (5-stock sector baskets)
+    │
+    ├── backtest/
+    │   ├── engine.py                 # Backtest engine (monthly rebalance)
+    │   ├── portfolio.py              # Decile long-short portfolio construction
+    │   └── metrics.py                # Sharpe, max drawdown, turnover, etc.
+    │
+    ├── analysis/
+    │   └── factor_analysis.py        # Visualization and comparison charts
+    │
+    ├── results/plots/                # Generated charts (not tracked)
+    │
+    └── research_log/                 # Weekly research notes
+        └── week_01.md                # Week 1: setup, factors, pairs, post-pairs
+
+## Research Log
+
+Detailed findings, methodology notes, and analysis are documented in
+the `research_log/` folder, updated weekly:
+
+- [Week 1](research_log/week_01.md) — Project setup, three
+  cross-sectional factors, classical pairs trading, basket stat arb
+  (post-pairs), and the sector homogeneity finding
+
+## What's Implemented
+
+**Cross-Sectional Factors**: momentum (12-1), mean reversion (5d),
+low volatility (63d). Backtested as decile long-short portfolios
+with monthly rebalance and 10 bps transaction cost.
+
+**Classical Pairs Trading**: Engle-Granger cointegration screening,
+z-score signal generation, out-of-sample backtest on 4 pairs.
+
+**Post-Pairs (Basket Stat Arb)**: extension of pairs trading from
+2 to 5 same-sector stocks. Each stock is compared against the
+equal-weighted average of its 4 peers. Tested on 6 sector baskets.
+
+## Key Finding
+
+Basket stat arb only works in sectors where no single stock can
+structurally decouple from its peers. Consumer staples (KO, PEP, PG,
+CL, KHC) delivered Sharpe 0.56 with -10.9% max drawdown.
+Semiconductors lost 75% because NVDA permanently diverged due to AI
+demand. See [Week 1 log](research_log/week_01.md) for full analysis.
+
+## Data
+
+- **Universe**: 462 S&P 500 constituents
+- **Period**: 2015–2024 daily data
+- **Source**: Yahoo Finance via yfinance
+- Data files (CSVs) are gitignored — run `download_data.py` to
+  regenerate
