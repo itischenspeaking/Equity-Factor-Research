@@ -104,3 +104,8 @@ stopped holding out-of-sample.
 - [ ] Expand pairs universe: add more sector groups, consider ETFs
 - [ ] Try Kalman filter for dynamic hedge ratio instead of static OLS
 - [ ] Drawdown duration analysis
+- [ ] Read key papers:
+      - Gatev, Goetzmann & Rouwenhorst (2006) "Pairs Trading: Performance of a Relative-Value Arbitrage Rule" — RFS
+      - Engle & Granger (1987) "Co-integration and Error Correction" — Econometrica
+      - Krauss (2017) "Statistical Arbitrage Pairs Trading Strategies: Review and Outlook" — J. of Economic Surveys
+      - Vidyamurthy (2004) "Pairs Trading: Quantitative Methods and Analysis" — Wiley Finance
