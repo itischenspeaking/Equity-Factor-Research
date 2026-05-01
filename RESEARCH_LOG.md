@@ -227,3 +227,12 @@ connection holds, it could provide a quantitative framework for
 identifying which sectors and stocks are suitable for this type
 of stat arb — rather than discovering after the fact that NVDA
 was the wrong stock to short.
+
+In fact,after a little bit of research, I found this: Frazzini, Kabiller & Pedersen (2018) "Buffett's Alpha"
+(Financial Analysts Journal, 74(4), 35-55) decomposed
+Berkshire Hathaway's returns and found that Buffett's edge is largely
+explained by quality and low-volatility factors — precisely the
+characteristics that make consumer staples the only sector where
+my basket strategy works. 
+
+Hmmmmmm, interesting.
