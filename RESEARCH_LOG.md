@@ -219,11 +219,11 @@ a preference for stocks whose returns are well-explained by their
 sector peers (low idiosyncratic volatility, strong mean reversion
 to sector average).
  
-**I want to investigate whether there is a systematic relationship
+**I want to investigate whether there is truly a relationship
 between "Buffett-style" stock characteristics (stable cash flows,
 low business model variance, high peer-group cointegration) and
-the effectiveness of basket mean reversion strategies.** If the
-connection holds, it could provide a quantitative framework for
+the effectiveness of basket post-pairs strategies.** If the
+connection holds, it could be used for
 identifying which sectors and stocks are suitable for this type
 of stat arb — rather than discovering after the fact that NVDA
 was the wrong stock to short.
