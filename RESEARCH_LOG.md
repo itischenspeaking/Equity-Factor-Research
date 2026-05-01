@@ -109,3 +109,121 @@ stopped holding out-of-sample.
       - Engle & Granger (1987) "Co-integration and Error Correction" — Econometrica
       - Krauss (2017) "Statistical Arbitrage Pairs Trading Strategies: Review and Outlook" — J. of Economic Surveys
       - Vidyamurthy (2004) "Pairs Trading: Quantitative Methods and Analysis" — Wiley Finance
+
+
+### Why Pairs Trading Underperformed
+ 
+Classical pairs trading found only 2 cointegrated pairs under strict
+filters (corr > 0.7, p < 0.05), and 4 under relaxed filters. All
+four produced mildly negative returns out-of-sample. Two problems:
+ 
+1. **Too few pairs**: with only 4 tradeable pairs, there is no
+   diversification of pair-specific risk. One structural break
+   (e.g. CRM diverging from ADBE in 2024H2) wipes out months
+   of gains across the entire strategy.
+2. **Cointegration is fragile**: the Engle-Granger test found a
+   relationship in the formation period, but that relationship
+   didn't hold out-of-sample. This is a known issue — Krauss (2017)
+   documents declining pairs trading profitability since the 2000s
+   as more participants exploit the same signals and structural
+   shifts happen faster.
+The fundamental limitation is that 2 stocks is too few to form a
+robust "fair value" estimate. If stock A deviates from stock B,
+you don't know if A moved too much or B moved too little.
+ 
+### Extension: Post-Pairs (Basket Statistical Arbitrage)
+ 
+To address this, I extended the pairs framework from 2 stocks to
+baskets of 5 same-sector stocks. The idea: instead of comparing
+one stock to one partner, compare each stock to the equal-weighted
+average of its 4 closest peers. The peer average acts as a more
+robust estimate of "fair sector value" — if one stock deviates,
+4 stocks agreeing against it is a stronger signal than 1.
+ 
+Why 5 stocks specifically:
+ 
+- 2 is classical pairs — too fragile, as shown above
+- 20+ stocks requires fitting weight coefficients, which at this
+  sample size would almost certainly overfit
+- 5 is the sweet spot: enough peers (4) to form a stable reference
+  price, few enough that I can use equal weights with no fitting,
+  zero free parameters, zero overfitting risk
+Current implementation uses **equal weights** — when a stock's
+z-score crosses ±2 vs its peer average, go long $1 of the anomalous
+stock and short $0.25 of each of the 4 peers (or vice versa).
+Dollar-neutral by construction. **Next step: investigate whether
+optimized per-stock weights improve results**, though the overfitting
+risk needs careful handling (possibly regularized regression or
+rolling OLS).
+ 
+### Post-Pairs Results
+ 
+Tested 6 sector baskets on the out-of-sample period (last 30% of
+data, roughly 2022-2024):
+ 
+| Basket           | Ann. Return | Sharpe | Max DD  | Trades |
+|------------------|-------------|--------|---------|--------|
+| Consumer Staples | 6.04%       | 0.56   | -10.90% | 67     |
+| Energy           | 1.34%       | 0.10   | -19.01% | 64     |
+| Banks            | 0.31%       | 0.02   | -15.71% | 68     |
+| Tech Software    | -6.74%      | -0.29  | -51.27% | 67     |
+| Pharma           | -14.59%     | -0.73  | -50.91% | 58     |
+| Semis            | -35.59%     | -1.10  | -75.06% | 57     |
+ 
+### Key Finding: Strategy Only Works in Homogeneous Sectors
+ 
+Only Consumer Staples (KO, PEP, PG, CL, KHC) produced meaningful
+positive returns. The pattern across baskets reveals a clear rule:
+ 
+**The strategy works when no single stock can structurally decouple
+from its peers.**
+ 
+Consumer staples companies sell near-identical products (beverages,
+household goods, packaged food) into near-identical markets. There
+is no plausible scenario where KO 10x's while PEP doesn't. When
+one stock deviates, it really is noise, and it really does revert.
+ 
+The baskets that failed all had one stock that broke away from the
+group permanently:
+ 
+- **Semis**: NVDA decoupled due to AI demand (2023 onwards). The
+  strategy kept shorting NVDA and longing TXN/QCOM. Catastrophic.
+- **Pharma**: LLY decoupled due to GLP-1 drugs (Ozempic/Mounjaro).
+  Same dynamic — strategy shorted the breakout stock.
+- **Tech Software**: ORCL surged on cloud/AI pivot while ADBE
+  stagnated. The strategy was up 55% at one point (mid-2023) before
+  this structural shift erased everything.
+- **Banks / Energy**: roughly flat, no catastrophic breakout but
+  also not enough clean mean reversion to generate profit.
+This is the central tension of stat arb: the strategy assumes the
+group relationship is stable. When it is (consumer staples), you
+get Sharpe 0.56 with 10% max drawdown. When it isn't (semis), you
+lose 75%.
+ 
+### Next Steps: The Berkshire Hathaway Connection
+ 
+Interesting finding while reading the literature: Chen & Yang (2021)
+used a similar basket replication approach to replicate Berkshire
+Hathaway's portfolio returns using statistical arbitrage:
+ 
+> Chen A-S, Yang C-M (2021) "Optimal statistical arbitrage trading
+> of Berkshire Hathaway stock and its replicating portfolio."
+> PLoS ONE 16(1): e0244541.
+ 
+Buffett has famously concentrated his portfolio in consumer-facing
+businesses he considers predictable — Coca-Cola, American Express,
+Kraft Heinz — precisely the kind of stable, homogeneous companies
+where my post-pairs strategy works best. His "I only invest in
+businesses I can understand" philosophy may be, in quant terms,
+a preference for stocks whose returns are well-explained by their
+sector peers (low idiosyncratic volatility, strong mean reversion
+to sector average).
+ 
+**I want to investigate whether there is a systematic relationship
+between "Buffett-style" stock characteristics (stable cash flows,
+low business model variance, high peer-group cointegration) and
+the effectiveness of basket mean reversion strategies.** If the
+connection holds, it could provide a quantitative framework for
+identifying which sectors and stocks are suitable for this type
+of stat arb — rather than discovering after the fact that NVDA
+was the wrong stock to short.
