@@ -37,8 +37,12 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
     ├── analysis/
     │   └── factor_analysis.py        # Visualization and comparison charts
     │
-    ├── results/plots/                # Generated charts (not tracked)
-    │
+    ├── results/
+    │   ├── cross_sectional_factors/plots/  # Factor comparison charts
+    │   ├── pairs_trading/plots/            # Pair analysis charts
+    │   ├── post_pairs/v1/plots/            # Basket v1 charts
+    │   ├── post_pairs/v2/plots/            # Basket v2 charts
+    │   └── reports/                        # Standalone analysis reports
     └── research_log/                 # Weekly research notes
         └── week_01.md                # Week 1: setup, factors, pairs, post-pairs
 

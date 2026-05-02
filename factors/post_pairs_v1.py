@@ -247,7 +247,7 @@ def run_post_pairs(close, baskets=None, lookback=60,
     return all_results
 
 
-def plot_basket_analysis(name, result, save_dir="results/plots"):
+def plot_basket_analysis(name, result, save_dir="results/post-pairs/v1/plots"):
     """
     Plot a 3-panel chart for one basket:
       1. Z-scores of all 5 stocks

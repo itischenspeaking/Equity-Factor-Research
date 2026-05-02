@@ -17,7 +17,7 @@ from factors.volatility import compute_volatility_factor
 from backtest.engine import run_backtest
 
 
-def plot_pair_analysis(pair_name, pair_result, save_dir="results/plots"):
+def plot_pair_analysis(pair_name, pair_result, save_dir="results/pairs_trading/plots"):
     """
     Plot a 4-panel analysis for a single pair:
       1. Normalized prices of both stocks
@@ -97,7 +97,7 @@ def plot_pair_analysis(pair_name, pair_result, save_dir="results/plots"):
     print(f"  Saved: {filename}")
 
 
-def plot_factor_comparison(close, save_dir="results/plots"):
+def plot_factor_comparison(close, save_dir="results/cross_sectional_factors/plots"):
     """
     Plot cumulative returns of all three factor strategies on one chart.
     """

@@ -379,7 +379,7 @@ def run_all_baskets_v2(close, baskets=None, test_split=0.7, **kwargs):
 # PART 5: Visualization
 # ============================================================
 
-def plot_basket_v2(name, result, save_dir="results/plots"):
+def plot_basket_v2(name, result, save_dir="results/post_pairs/v2/plots"):
     """
     Plot a 4-panel chart for one basket:
       1. S-scores of all 5 stocks (only when filter passes)

@@ -221,3 +221,14 @@ __marimo__/
 data/raw/
 data/processed/
 data/*.csv
+
+# ======================
+# Results control
+# ======================
+
+# Ignore generated plots
+results/*/plots/
+results/*/*/plots/
+
+# Keep reports (manual analysis)
+!results/reports/
