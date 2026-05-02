@@ -266,6 +266,7 @@ this window on a much broader, more volatile universe.
       rather than a solid reasoning. My goal is to get
       comfortable with the fundamentals of quant research, not to
       outsmart Buffett in my second week :).
+- [ ] **Build module for Fama-French contribution**
 
 ## Reading list
 
