@@ -266,7 +266,27 @@ this window on a much broader, more volatile universe.
       rather than a solid reasoning. My goal is to get
       comfortable with the fundamentals of quant research, not to
       outsmart Buffett in my second week :).
-- [ ] **Build module for Fama-French contribution**
+- [ ] **Fama-French factor attribution — three parts:**
+  - [ ] **Part 1 (learning):** Work through the sec-api.io tutorial
+        (https://sec-api.io/resources/fama-french-factor-model).
+        Goal: understand the Fama-French factor model — what the
+        factors are, how to run the regression, how to interpret
+        alpha and factor loadings. This is conceptual foundation.
+  - [ ] **Part 2 (data engineering):** Work through the Coding
+        Finance tutorial
+        (https://www.codingfinance.com/post/2019-07-01-analyze-ff-factor-python/).
+        Goal: learn industry-level data engineering — manually
+        downloading FF data from Kenneth French's website, parsing
+        the raw CSV, handling date formats, aligning with portfolio
+        returns. Useful as a fallback when pandas_datareader breaks.
+  - [ ] **Part 3 (reference only):** Found Tidy Finance with Python
+        (https://www.tidy-finance.org/python/replicating-fama-and-french-factors.html)
+        which replicates the full FF factor construction from CRSP/
+        Compustat raw data. Not planning to do this — way too heavy
+        for current scope — but bookmarking it as a solid reference
+        on FF factor construction principles. Worth revisiting later
+        if I ever need to verify my own factor implementations
+        against the originals.
 
 ## Reading list
 
