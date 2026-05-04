@@ -173,7 +173,7 @@ The 6-factor model adds three factors to the FF3 base:
 
 *Bold loadings are statistically significant at p < 0.05.*
 
-![FF6 Loadings](plots/ff6_loadings_and_v1.png)
+![FF6 Loadings](plots/ff6_factors_and_v1.png)
 *Figure 3: FF5 + Momentum factor loadings across all four strategies. Blue bars indicate statistical significance (p < 0.05), grey bars are not significant.*
 
 ### 6.2 Interpretation Under FF6
