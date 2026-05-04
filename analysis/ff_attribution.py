@@ -213,8 +213,22 @@ if __name__ == "__main__":
         print_attribution("Post-Pairs v2: Staples", summary)
         all_results["Post-Pairs v2: Staples"] = summary
 
+
+    # Chart 1: Cross-sectional factors + Post-Pairs v1
+    chart1 = {k: v for k, v in all_results.items()
+              if "v2" not in k}
     plot_factor_loadings(
-        all_results,
-        save_path="results/cross_sectional_factors/plots/ff6_loadings.png"
+        chart1,
+        save_path="results/cross_sectional_factors/plots/ff6_factors_and_v1.png"
     )
+
+    # Chart 2: Post-Pairs v1 vs v2 comparison
+    chart2 = {k: v for k, v in all_results.items()
+              if "Post-Pairs" in k}
+    if len(chart2) > 1:
+        plot_factor_loadings(
+            chart2,
+            save_path="results/post_pairs/plots/ff6_v1_vs_v2.png"
+        )
+
     print("\nDone.")
