@@ -202,6 +202,17 @@ if __name__ == "__main__":
         print_attribution("Post-Pairs v1: Staples", summary)
         all_results["Post-Pairs v1: Staples"] = summary
 
+    # --- Post-Pairs v2 ---
+    from factors.post_pairs_v2 import run_all_baskets_v2
+    pp2_results = run_all_baskets_v2(close)
+
+    if "Consumer_Staples" in pp2_results:
+        daily_ret = pp2_results["Consumer_Staples"]["returns"]
+        monthly_ret = compute_monthly_returns(daily_ret)
+        model, summary = run_ff_regression(monthly_ret, ff)
+        print_attribution("Post-Pairs v2: Staples", summary)
+        all_results["Post-Pairs v2: Staples"] = summary
+
     plot_factor_loadings(
         all_results,
         save_path="results/cross_sectional_factors/plots/ff6_loadings.png"
