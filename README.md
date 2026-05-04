@@ -44,8 +44,8 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
     │   ├── post_pairs/v2/plots/            # Basket v2 charts
     │   └── reports/                        # Standalone analysis reports
     └── research_log/                 # Weekly research notes
-        └── week_01.md                # Week 1: setup, factors, pairs, post-pairs
-
+        ├── week_01.md                # Week 1: setup, factors, pairs, post-pairs
+        └── week_02.md                # Week 2: Fama-French factor attribution
 ## Research Log
 
 Detailed findings, methodology notes, and analysis are documented in
@@ -54,6 +54,14 @@ the `research_log/` folder, updated weekly:
 - [Week 1](research_log/week_01.md) — Project setup, three
   cross-sectional factors, classical pairs trading, basket stat arb
   (post-pairs), and the sector homogeneity finding
+- [Week 2](research_log/week_02.md) — Fama-French factor attribution
+  (FF3 → FF6), omitted variable bias analysis, OU filter evaluation
+
+## Reports
+
+- [Factor Attribution Report](results/reports/factor_attribution_report.md)
+  — FF3 and FF6 regression on all strategies, v1 vs v2 comparison,
+  omitted variable bias case study
 
 ## What's Implemented
 
@@ -67,6 +75,10 @@ z-score signal generation, out-of-sample backtest on 4 pairs.
 **Post-Pairs (Basket Stat Arb)**: extension of pairs trading from
 2 to 5 same-sector stocks. Each stock is compared against the
 equal-weighted average of its 4 peers. Tested on 6 sector baskets.
+
+**Factor Attribution**: FF5 + Momentum (6-factor) regression on all
+strategy returns. Decomposes performance into market, size, value,
+profitability, investment, and momentum exposures.
 
 ## Key Finding
 
