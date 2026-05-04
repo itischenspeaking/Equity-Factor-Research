@@ -1,4 +1,4 @@
-# Factor Attribution Report: Fama-French 3-Factor vs 6-Factor Analysis
+# Factor Attribution Report: Fama-French Analysis and OU Filter Evaluation
 
 **Project:** Equity Factor Research
 **Date:** May 2026
@@ -9,25 +9,27 @@
 
 ## 1. Executive Summary
 
-This report presents the results of Fama-French factor attribution analysis on four trading strategies: Momentum (12-1 month), Mean Reversion (5-day), Low Volatility (63-day), and a Basket Statistical Arbitrage strategy on Consumer Staples stocks. Each strategy is evaluated under two attribution frameworks — the classic FF 3-factor model (Mkt-RF, SMB, HML) and the expanded FF 5-factor + Momentum model (adding RMW, CMA, UMD) — to identify the sources of returns, compare explanatory power, and assess whether any strategy generates genuine alpha.
+This report presents the results of Fama-French factor attribution analysis on four trading strategies: Momentum (12-1 month), Mean Reversion (5-day), Low Volatility (63-day), and a Basket Statistical Arbitrage strategy on Consumer Staples stocks. Each strategy is evaluated under two attribution frameworks — the classic FF 3-factor model (Mkt-RF, SMB, HML) and the expanded FF 5-factor + Momentum model (adding RMW, CMA, UMD) — to identify the sources of returns, compare explanatory power, and assess whether any strategy generates genuine alpha. A separate analysis evaluates the impact of adding Ornstein-Uhlenbeck quality filters to the Consumer Staples strategy (v1 → v2).
 
 Key findings:
 
 - **Momentum** is almost perfectly explained by the UMD factor (loading 0.94), but underperforms the standard momentum premium by ~6.5% annually — suggesting implementation drag from universe composition and rebalance mechanics.
 - **Mean Reversion** is orthogonal to all six factors (R² < 0.10), confirming that short-term reversal is a distinct return source not captured by any standard academic factor.
 - **Low Volatility** has significant negative alpha under both models (-10.2% under FF3, -15.0% under FF6), driven by catastrophic losses from shorting structural breakout stocks (NVDA, TSLA, AMD).
-- **Consumer Staples Stat Arb** shows zero exposure to all six factors (R² = 0.07, adjusted R² = -0.12), with an annualised alpha of 3.7% that is not statistically significant due to limited sample size (36 months out-of-sample).
+- **Consumer Staples Stat Arb (v1)** shows zero exposure to all six factors (R² = 0.07, adjusted R² = -0.12), with an annualised alpha of 3.7% that is not statistically significant due to limited sample size (36 months out-of-sample).
+- **Consumer Staples Stat Arb (v2)** — adding OU-based filters (mean-reversion speed, ADF stationarity) — destroys v1's positive alpha and introduces a significant negative alpha of -4.16% (p = 0.041). The filters also inject market factor exposure that did not exist in v1. The current filter design is demonstrably harmful for this sector and should not be used in its present form.
 
 ---
 
 ## 2. Strategy Performance Summary
 
-| Strategy | Ann. Return | Ann. Volatility | Sharpe Ratio | Max Drawdown | Avg Turnover |
+| Strategy | Ann. Return | Ann. Volatility | Sharpe Ratio | Max Drawdown | Days Active |
 |---|---|---|---|---|---|
-| Momentum (12-1) | -5.98% | 23.14% | -0.26 | -57.55% | 0.039 |
-| Mean Reversion (5d) | 0.11% | 16.01% | 0.01 | -39.28% | 0.115 |
-| Low Volatility (63d) | -16.54% | 25.24% | -0.66 | -88.28% | 0.041 |
-| Post-Pairs v1: Staples | 6.04% | 10.75% | 0.56 | -10.90% | N/A |
+| Momentum (12-1) | -5.98% | 23.14% | -0.26 | -57.55% | 100% |
+| Mean Reversion (5d) | 0.11% | 16.01% | 0.01 | -39.28% | 100% |
+| Low Volatility (63d) | -16.54% | 25.24% | -0.66 | -88.28% | 100% |
+| Post-Pairs v1: Staples | 6.04% | 10.75% | 0.56 | -10.90% | 87% |
+| Post-Pairs v2: Staples | -1.85% | 2.73% | -0.68 | -8.89% | 22% |
 
 Only the Consumer Staples basket strategy produced positive risk-adjusted returns in this period. The remaining three cross-sectional factor strategies all posted negative Sharpe ratios over the 2015–2024 sample, a period characterised by persistent growth/mega-cap outperformance, a sharp momentum crash during COVID-19 (March 2020), and an unprecedented technology bull market that punished any strategy with short exposure to high-volatility names.
 
@@ -100,7 +102,7 @@ The 6-factor model adds three factors to the FF3 base:
 
 *Bold loadings are statistically significant at p < 0.05.*
 
-![FF6 Loadings](plots/ff6_loadings_6ff.png)
+![FF6 Loadings](plots/ff6_factors_and_v1.png)
 *Figure 3: FF5 + Momentum factor loadings across all four strategies. Blue bars indicate statistical significance (p < 0.05), grey bars are not significant.*
 
 ### 4.2 Interpretation Under FF6
@@ -162,29 +164,87 @@ This result is a practical demonstration of why the 6-factor model is preferred:
 
 ---
 
-## 6. Statistical Limitations and Caveats
+## 6. OU Filter Evaluation: Consumer Staples v1 vs v2
 
-### 6.1 Sample Size
+### 6.1 Background
+
+The v1 Consumer Staples strategy trades every z-score deviation without filtering, achieving the only positive Sharpe ratio among all strategies tested. The v2 strategy adds three quality filters based on Avellaneda & Lee (2010): an Ornstein-Uhlenbeck mean-reversion speed threshold (κ > 252/30, i.e. half-life < 30 trading days), an ADF stationarity test (p < 0.10), and rolling re-estimation on a 60-day window. The s-score replaces the z-score as the signal, with entry at ±1.25 and exit at ±0.5. The intention is to distinguish tradeable noise from structural breaks and only trade when mean reversion is statistically supported.
+
+### 6.2 Performance Comparison
+
+| | v1 | v2 | Change |
+|---|---|---|---|
+| Ann. Return | 6.04% | -1.85% | Positive → Negative |
+| Sharpe | 0.56 | -0.68 | Positive → Negative |
+| Ann. Volatility | 10.75% | 2.73% | -75% |
+| Max Drawdown | -10.90% | -8.89% | Slight improvement |
+| Days Active | 87% | 22% | -65 pp |
+| Trades | 67 | 61 | Slight decrease |
+
+The filters reduced active trading time from 87% to 22%, effectively leaving the strategy in cash for more than three-quarters of the out-of-sample period. Individual stock pass rates were extremely low: PEP passed only 7% of the time, PG 13%, KO 18%, KHC 14%, and CL 28% (the highest). These are among the most stable, homogeneous stocks in the entire market — if they cannot consistently pass the filters, the filters are miscalibrated for this environment.
+
+### 6.3 Factor Attribution Comparison (FF5 + Momentum)
+
+| | v1 | v2 | Interpretation |
+|---|---|---|---|
+| **Alpha (annualised)** | 3.73% (p=0.552) | **-4.16% (p=0.041)** | Positive → Significant negative |
+| **Mkt-RF** | -0.140 (p=0.203) | **-0.079 (p=0.026)** | Not significant → Significant |
+| **SMB** | 0.053 (p=0.805) | 0.079 (p=0.245) | Not significant → Not significant |
+| **HML** | 0.106 (p=0.636) | -0.041 (p=0.561) | Not significant → Not significant |
+| **RMW** | -0.012 (p=0.960) | -0.025 (p=0.739) | Not significant → Not significant |
+| **CMA** | -0.140 (p=0.629) | 0.057 (p=0.533) | Not significant → Not significant |
+| **Mom** | -0.062 (p=0.677) | -0.029 (p=0.542) | Not significant → Not significant |
+| **R²** | 0.070 | 0.196 | Increased |
+| **Adj R²** | -0.116 | 0.035 | Increased |
+
+![v1 vs v2 Loadings](plots/ff6_v1_vs_v2.png)
+*Figure 4: FF5 + Momentum factor loadings comparison between Post-Pairs v1 (no filter) and v2 (OU filter). v2 introduces a significant Mkt-RF loading that did not exist in v1.*
+
+### 6.4 Diagnosis: Three Problems with the Current Filter
+
+**Problem 1 — The filter introduces significant negative alpha.** v1 had positive alpha of 3.73% (not significant due to sample size). v2 has negative alpha of -4.16%, and it is significant (p = 0.041). The filter does not merely reduce trading opportunities — it systematically selects worse trades. The mechanism: the ADF test on a 60-day window can only reject the unit root null when spread fluctuations are unusually large. In a low-volatility sector like Consumer Staples, unusually large fluctuations tend to signal the onset of structural change (e.g., KHC fundamental deterioration), not a high-quality mean reversion opportunity. The filter's design assumption — that large spread movements in a stationary process are the best trading opportunities — inverts the reality of this sector, where large spread movements are precisely the ones least likely to revert.
+
+**Problem 2 — The filter injects factor exposure that did not previously exist.** v1's Mkt-RF loading was -0.14 (p = 0.203, not significant). v2's Mkt-RF loading is -0.079 (p = 0.026, significant). R² nearly triples from 0.07 to 0.20. A strategy that was fully market-neutral now has a detectable short-market tilt. This means the filter's pass/fail decisions are correlated with market conditions — it tends to allow trading in certain market environments and block it in others, inadvertently creating market timing behaviour. A well-designed filter for a dollar-neutral strategy should not introduce systematic factor exposures; the fact that it does indicates the filter is responding to market-level signals rather than stock-level mean reversion quality.
+
+**Problem 3 — Extreme over-filtering destroys capital efficiency.** With only 22% active days and annualised volatility of 2.73% (vs 10.75% for v1), the strategy's capital sits idle the vast majority of the time. Even if the filtered trades had been profitable, the capital efficiency would be poor. The 75% reduction in volatility is not "risk management" in any useful sense — it is the mechanical consequence of a filter that rejects nearly everything. For context, a 2.73% annualised volatility is comparable to holding cash in a money market fund. The filter has effectively transformed an active trading strategy into a mostly-idle allocation.
+
+### 6.5 The Broader Context: Avellaneda & Lee's Original Design
+
+The filter parameters are adapted from Avellaneda & Lee (2010), who designed them for a broad universe of US equities spanning multiple sectors with widely varying volatility profiles. Their universe included hundreds of stocks with heterogeneous characteristics, where structural decoupling was common and aggressive filtering was necessary to avoid catastrophic losses. The authors themselves noted that they "modulated the leverage coefficient on a sector-by-sector basis," acknowledging that a single set of parameters could not work uniformly across different market environments.
+
+Applying these parameters without modification to a five-stock, single-sector basket of Consumer Staples — the lowest-volatility, most homogeneous corner of the equity market — represents a fundamental mismatch between the filter's design assumptions and the trading environment. The 60-day estimation window is too short for the slow-moving spreads in this sector; the kappa threshold (half-life < 30 days) may be appropriate for volatile tech stocks but is unnecessarily aggressive for Consumer Staples where half-lives are naturally longer; and the ADF test lacks statistical power on low-variance series in short windows.
+
+### 6.6 Conclusion
+
+The OU filter, as currently implemented, is demonstrably harmful to the Consumer Staples basket strategy. It kills positive alpha, introduces negative alpha, creates factor exposures that did not previously exist, and wastes capital on idle cash. The filter needs fundamental redesign before it can add value to this strategy. The specific direction of that redesign is deferred to a subsequent analysis.
+
+It is worth noting that the filter does serve a useful purpose in other sectors: on Semiconductors, it reduced max drawdown from -75% to -14%; on Pharma, from -51% to -15%. The filter's failure is sector-specific, not universal. This reinforces the broader finding from this project: sector homogeneity determines everything. The same tool that protects against structural decoupling in heterogeneous sectors destroys alpha in homogeneous ones.
+
+---
+
+## 7. Statistical Limitations and Caveats
+
+### 7.1 Sample Size
 
 The Consumer Staples Stat Arb strategy uses a 3-year out-of-sample window (~36 monthly observations). With 6 regressors, this leaves only 29 degrees of freedom. A rough power calculation: to detect a 3.7% annualised alpha with 10.75% volatility at the 5% significance level with 80% power, approximately 70–80 monthly observations would be required. The current sample provides roughly 30–40% of the statistical power needed for reliable inference on the Staples strategy.
 
-### 6.2 Adjusted R² as a Model Fit Diagnostic
+### 7.2 Adjusted R² as a Model Fit Diagnostic
 
 The Consumer Staples Stat Arb has an adjusted R² of -0.116 under the 6-factor model. A negative adjusted R² indicates that the model performs worse than simply using the mean return as a predictor — the six factors are adding pure noise. This is not a failure of the strategy but rather confirms that FF factors are the wrong explanatory framework for intra-sector mean reversion signals.
 
-### 6.3 Factor Model Limitations for Dollar-Neutral Strategies
+### 7.3 Factor Model Limitations for Dollar-Neutral Strategies
 
 Fama-French factors are designed to explain long-only, cross-sectional return differences. Dollar-neutral strategies (like the Staples Stat Arb) mechanically hedge out most systematic factor exposures. The near-zero loadings observed for the Staples strategy may therefore reflect the strategy's construction rather than a genuine absence of factor-related return drivers. Alternative attribution frameworks — such as decomposing returns into sector-level vs idiosyncratic components, or using intra-sector dispersion as a factor — may be more appropriate for this class of strategy.
 
-### 6.4 Survivorship Bias
+### 7.4 Survivorship Bias
 
 The universe consists of current S&P 500 constituents. 23 tickers that were delisted or acquired during the sample period (e.g., ATVI, SIVB, FRC) are excluded. This introduces survivorship bias that may affect factor loading estimates, particularly for SMB and HML, as delisted companies tend to be smaller and more distressed.
 
 ---
 
-## 7. Conclusions and Next Steps
+## 8. Conclusions and Next Steps
 
-The factor attribution analysis yields four distinct conclusions, one per strategy:
+The factor attribution analysis yields five distinct conclusions, one per strategy:
 
 1. **Momentum** is a pure UMD exposure with negative implementation alpha. The priority is understanding *why* the implementation underperforms the academic factor — universe composition (462 S&P 500 stocks vs full CRSP) and rebalancing frequency are the leading hypotheses.
 
@@ -192,9 +252,11 @@ The factor attribution analysis yields four distinct conclusions, one per strate
 
 3. **Low Volatility** carries deeply negative alpha that worsens as more factors are added. The strategy is structurally incompatible with periods of concentrated technology outperformance. It may be viable in risk-off regimes (2000–2010), but regime-conditional deployment is beyond current scope.
 
-4. **Consumer Staples Stat Arb** generates returns that no standard factor model can explain, but the sample is too small for statistical significance. Extending the out-of-sample period and testing across additional homogeneous sectors are the two highest-priority next steps.
+4. **Consumer Staples Stat Arb (v1)** generates returns that no standard factor model can explain, but the sample is too small for statistical significance. Extending the out-of-sample period and testing across additional homogeneous sectors are the two highest-priority next steps.
 
-The upgrade from FF3 to FF6 proved its value primarily through the Momentum strategy, where it doubled explanatory power and revealed a textbook case of omitted variable bias. For strategies that are inherently orthogonal to systematic factors (Mean Reversion, Staples Stat Arb), the choice between FF3 and FF6 is immaterial — neither model has explanatory power. Nevertheless, the 6-factor model should be used as the default attribution framework, as it provides a more complete set of controls and avoids the OVB distortions demonstrated in Section 5.3.
+5. **Consumer Staples Stat Arb (v2)** demonstrates that the OU-based filter regime from Avellaneda & Lee (2010), applied without sector-specific calibration, is actively harmful to the strategy. The filter kills positive alpha, introduces significant negative alpha, and creates unintended factor exposures. Filter redesign is required, with the key constraint being that any new filter must be validated against the v1 baseline using the same factor attribution framework presented in this report.
+
+The upgrade from FF3 to FF6 proved its value primarily through the Momentum strategy, where it doubled explanatory power and revealed a textbook case of omitted variable bias. For strategies that are inherently orthogonal to systematic factors (Mean Reversion, Staples Stat Arb), the choice between FF3 and FF6 is immaterial — neither model has explanatory power. Nevertheless, the 6-factor model should be used as the default attribution framework, as it provides a more complete set of controls and avoids the OVB distortions demonstrated in Section 5.3. The v1 vs v2 comparison in Section 6 further demonstrates the value of factor attribution as a diagnostic tool: without it, one might conclude that v2 is simply "less profitable" than v1. Factor attribution reveals the deeper problem — that the filter fundamentally alters the strategy's factor profile and introduces systematic biases that did not previously exist.
 
 ---
 
