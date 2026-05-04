@@ -173,7 +173,7 @@ The 6-factor model adds three factors to the FF3 base:
 
 *Bold loadings are statistically significant at p < 0.05.*
 
-![FF6 Loadings](plots/ff6_loadings_6ff.png)
+![FF6 Loadings](plots/ff6_loadings_and_v1.png)
 *Figure 3: FF5 + Momentum factor loadings across all four strategies. Blue bars indicate statistical significance (p < 0.05), grey bars are not significant.*
 
 ### 6.2 Interpretation Under FF6
@@ -215,6 +215,9 @@ The 6-factor model provides a dramatically better fit for the Momentum strategy 
 | Mean Reversion (5d) | -2.85% | 0.504 | -3.24% | 0.451 | Stable |
 | Low Volatility (63d) | -10.18% | **0.031** | -14.99% | **0.001** | Worsened significantly |
 | Staples Stat Arb | 3.82% | 0.516 | 3.73% | 0.552 | Stable |
+
+![v1 vs v2 Loadings](plots/ff6_v1_vs_v2.png)
+*Figure 4: FF5 + Momentum factor loadings comparison between Post-Pairs v1 (no filter) and v2 (OU filter). v2 introduces a significant Mkt-RF loading that did not exist in v1.*
 
 For strategies with significant factor exposures (Momentum and Low Volatility), adding more factors pushes alpha further negative. This is the expected behaviour: when a strategy's returns are largely explained by known factors, and those factors had positive returns in the sample period while the strategy had negative returns, additional factors reveal the strategy's underperformance was even worse than initially apparent.
 
