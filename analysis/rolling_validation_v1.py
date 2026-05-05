@@ -163,153 +163,42 @@ def run_single_window(returns, cum_spread, basket,
         "daily_returns": net_return,
     }
 
-def run_single_window_v2(returns, cum_spread, basket,
-                         window_start, window_end,
-                         lookback=60, entry_s=1.25, exit_s=0.5,
-                         stop_s=4.0, min_kappa=252/30,
-                         adf_pvalue=0.10, cost_bps=10):
-    """
-    Run v2 strategy (OU filter + s-score) on a single forward window.
-    """
-    from factors.post_pairs_v2 import estimate_ou_params, \
-        compute_s_score, passes_filters
-
-    all_dates = cum_spread.index
-    start_idx = all_dates.get_loc(window_start)
-
-    if start_idx < lookback:
-        return None
-
-    window_data = cum_spread.loc[window_start:window_end]
-    window_returns = returns.loc[window_start:window_end]
-
-    if len(window_data) < 10:
-        return None
-
-    signals = pd.DataFrame(0, index=window_data.index,
-                           columns=basket, dtype=float)
-    positions = {t: 0 for t in basket}
-    filter_pass_count = 0
-    filter_total_count = 0
-
-    for i, date in enumerate(window_data.index):
-        date_idx = all_dates.get_loc(date)
-        history_start = max(0, date_idx - lookback)
-        history = cum_spread.iloc[history_start:date_idx]
-
-        if len(history) < 20:
-            continue
-
-        for stock in basket:
-            spread_hist = history[stock]
-            filter_total_count += 1
-
-            ou = estimate_ou_params(spread_hist)
-            passed, _ = passes_filters(spread_hist, ou,
-                                       min_kappa, adf_pvalue)
-
-            if not passed:
-                positions[stock] = 0
-                signals.loc[date, stock] = 0
-                continue
-
-            filter_pass_count += 1
-            current = cum_spread[stock].iloc[date_idx]
-            s = compute_s_score(current, ou)
-
-            if np.isnan(s):
-                positions[stock] = 0
-                signals.loc[date, stock] = 0
-                continue
-
-            pos = positions[stock]
-            if pos == 0:
-                if s < -entry_s:
-                    pos = 1
-                elif s > entry_s:
-                    pos = -1
-            elif pos == 1:
-                if s > -exit_s or s < -stop_s:
-                    pos = 0
-            elif pos == -1:
-                if s < exit_s or s > stop_s:
-                    pos = 0
-
-            positions[stock] = pos
-            signals.loc[date, stock] = pos
-
-    # Portfolio returns (same as v1)
-    prev_signals = signals.shift(1).fillna(0)
-    port_return = pd.Series(0.0, index=window_returns.index)
-
-    for stock in basket:
-        peers = [t for t in basket if t != stock]
-        sig = prev_signals[stock]
-        stock_contrib = sig * window_returns[stock]
-        peer_contrib = -sig * window_returns[peers].mean(axis=1)
-        port_return += 0.5 * stock_contrib + 0.5 * peer_contrib
-
-    signal_changes = signals.diff().abs().sum(axis=1).fillna(0)
-    costs = signal_changes * cost_bps / 10000
-    net_return = port_return - costs
-    net_return = net_return.dropna()
-
-    if len(net_return) < 10:
-        return None
-
-    cum = (1 + net_return).cumprod()
-    total_ret = cum.iloc[-1] - 1
-    ann_factor = 252 / len(net_return)
-    ann_ret = (1 + total_ret) ** ann_factor - 1
-    ann_vol = net_return.std() * np.sqrt(252)
-    sharpe = ann_ret / ann_vol if ann_vol > 0 else 0
-    peak = cum.cummax()
-    max_dd = ((cum - peak) / peak).min()
-    days_active = (signals != 0).any(axis=1).sum()
-    pass_rate = filter_pass_count / filter_total_count \
-        if filter_total_count > 0 else 0
-
-    return {
-        "window_start": window_start,
-        "window_end": window_data.index[-1],
-        "n_days": len(net_return),
-        "total_return": total_ret,
-        "ann_return": ann_ret,
-        "ann_vol": ann_vol,
-        "sharpe": sharpe,
-        "max_dd": max_dd,
-        "days_active": days_active,
-        "filter_pass_rate": pass_rate,
-        "daily_returns": net_return,
-    }
-
 
 def run_rolling_validation(close, basket, forward_window=60,
-                           step=1, min_history=252, version="v1"):
+                           step=1, min_history=252):
     """
     Run rolling forward validation across the full sample.
-    version: "v1" (z-score, no filter) or "v2" (OU + ADF filter)
+
+    Parameters:
+        close: DataFrame of daily close prices
+        basket: list of 5 tickers
+        forward_window: evaluation window size (trading days)
+        step: how many days to advance between windows
+        min_history: minimum history required before first window
+
+    Returns:
+        results_df: DataFrame with one row per window
+        all_daily_returns: concatenated daily returns Series
     """
     returns, cum_spread = compute_residuals(close, basket)
     all_dates = cum_spread.index
 
     results = []
+    all_daily = []
 
+    # Start after min_history days
     start_positions = range(min_history, len(all_dates) - forward_window,
                             step)
 
     print(f"  Running {len(start_positions)} windows "
-          f"(step={step}, forward={forward_window}d, {version})...")
-
-    window_func = run_single_window if version == "v1" \
-        else run_single_window_v2
+          f"(step={step}, forward={forward_window}d)...")
 
     for i, start_pos in enumerate(start_positions):
         window_start = all_dates[start_pos]
         window_end = all_dates[min(start_pos + forward_window - 1,
                                    len(all_dates) - 1)]
 
-        result = window_func(
+        result = run_single_window(
             returns, cum_spread, basket,
             window_start, window_end
         )
@@ -317,6 +206,7 @@ def run_rolling_validation(close, basket, forward_window=60,
         if result is not None:
             results.append({k: v for k, v in result.items()
                            if k != "daily_returns"})
+            all_daily.append(result["daily_returns"])
 
         if (i + 1) % 200 == 0:
             print(f"    {i+1}/{len(start_positions)} windows done")
@@ -325,6 +215,7 @@ def run_rolling_validation(close, basket, forward_window=60,
     print(f"  Completed: {len(results_df)} valid windows")
 
     return results_df
+
 
 def plot_rolling_results(results_df, save_dir="results/post_pairs/v1/plots"):
     """
@@ -420,71 +311,25 @@ def print_summary(results_df):
     print(f"  Worst max drawdown:    {dd.min():>8.2%}")
     print(f"{'='*60}")
 
+
 if __name__ == "__main__":
     close = pd.read_csv("data/close_prices.csv", index_col=0,
                         parse_dates=True)
 
+    print(f"Running rolling validation on Consumer Staples v1...")
     print(f"Basket: {BASKET}\n")
 
-    # Run v1
-    print("=== V1 (no filter) ===")
-    v1_results = run_rolling_validation(close, BASKET, version="v1")
-    print_summary(v1_results)
-    plot_rolling_results(v1_results,
-                         save_dir="results/post_pairs/v1/plots")
+    results_df = run_rolling_validation(close, BASKET)
 
-    # Run v2
-    print("\n=== V2 (OU filter) ===")
-    v2_results = run_rolling_validation(close, BASKET, version="v2")
-    print_summary(v2_results)
-    plot_rolling_results(v2_results,
-                         save_dir="results/post_pairs/v2/plots")
+    print_summary(results_df)
 
-    # Comparison chart
-    print("\nGenerating v1 vs v2 comparison...")
-    fig, axes = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
-    fig.suptitle("Rolling Validation: v1 vs v2 Consumer Staples",
-                 fontsize=14, fontweight="bold")
+    print("\nGenerating charts...")
+    plot_rolling_results(results_df)
 
-    ax = axes[0]
-    ax.plot(v1_results["window_start"], v1_results["sharpe"].rolling(20).mean(),
-            label=f"v1 (mean={v1_results['sharpe'].mean():.2f})",
-            linewidth=1.2, color="steelblue")
-    ax.plot(v2_results["window_start"], v2_results["sharpe"].rolling(20).mean(),
-            label=f"v2 (mean={v2_results['sharpe'].mean():.2f})",
-            linewidth=1.2, color="coral")
-    ax.axhline(0, color="black", linewidth=0.5)
-    ax.set_ylabel("Sharpe (20-window MA)")
-    ax.set_title("Rolling Sharpe Ratio (smoothed)")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    ax = axes[1]
-    v1_cum = (1 + v1_results["total_return"]).cumprod()
-    v2_cum = (1 + v2_results["total_return"]).cumprod()
-    ax.plot(v1_results["window_start"], v1_cum,
-            label="v1", linewidth=1.2, color="steelblue")
-    ax.plot(v2_results["window_start"], v2_cum,
-            label="v2", linewidth=1.2, color="coral")
-    ax.axhline(1.0, color="black", linewidth=0.5)
-    ax.set_ylabel("Compounded Window Returns")
-    ax.set_title("Cumulative Performance of Rolling Windows")
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-
-    plt.tight_layout()
-    os.makedirs("results/post_pairs/plots", exist_ok=True)
-    path = "results/post_pairs/plots/rolling_v1_vs_v2.png"
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"  Saved: {path}")
-
-    # Save CSVs
+    # Save results
     os.makedirs("results/data_export", exist_ok=True)
-    v1_results.to_csv("results/data_export/09_rolling_validation_v1.csv",
+    results_df.to_csv("results/data_export/09_rolling_validation_staples.csv",
                       index=False)
-    v2_results.to_csv("results/data_export/10_rolling_validation_v2.csv",
-                      index=False)
-    print("  Saved CSVs")
+    print("  Saved: results/data_export/09_rolling_validation_staples.csv")
 
     print("\nDone.")
