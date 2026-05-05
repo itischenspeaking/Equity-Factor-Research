@@ -1,0 +1,9 @@
+Filename,Description
+01_cross_sectional_factor_performance.csv,"Backtest results for 3 cross-sectional factors. Source: backtest/engine.py. Decile long-short, monthly rebalance, 10bps cost, 462 S&P 500 stocks, 2015-2024."
+02_pairs_screening_results.csv,"Cointegrated pairs found by Engle-Granger test. Source: factors/pairs_trading.py. Filters: corr > 0.6, coint p < 0.10, half-life 2-120 days. Formation period: first 70% of data."
+03_pairs_trading_backtest.csv,"Out-of-sample backtest of 4 cointegrated pairs. Source: factors/pairs_trading.py. Test period: last 30% of data (~2022-2024). Z-score entry ±2, exit ±0.5."
+04_post_pairs_v1_performance.csv,"Basket stat arb v1 (no filtering) results for 6 sector baskets. Source: factors/post_pairs_v1.py. Equal-weight, z-score entry ±2, exit ±0.5, 10bps cost."
+05_post_pairs_v2_performance.csv,"Basket stat arb v2 (OU + ADF filtering) results for 6 sector baskets. Source: factors/post_pairs_v2.py. 60-day rolling OU estimation, kappa > 252/30, ADF p < 0.10, s-score entry ±1.25, exit ±0.5."
+06_post_pairs_v2_filter_diagnostics.csv,Per-stock filter pass rates for v2. Shows how often each stock's residual passed the OU kappa and ADF stationarity filters. Source: factors/post_pairs_v2.py.
+07_v1_vs_v2_consumer_staples.csv,Side-by-side performance comparison of Consumer Staples basket strategy with and without OU filtering.
+08_ff6_factor_attribution.csv,"Fama-French 5-factor + Momentum (6-factor) regression results for all strategies. Source: analysis/ff_attribution.py. Monthly returns regressed on Mkt-RF, SMB, HML, RMW, CMA, Mom. Alpha in percentage points."

@@ -1,0 +1,5 @@
+,stock_a,stock_b,correlation,coint_pvalue,hedge_ratio,half_life_days
+0,CRM,ADBE,0.693,0.0003,0.3739,28.5
+1,PEP,PG,0.729,0.0415,0.8325,41.5
+2,KO,PEP,0.739,0.024,0.2913,43.2
+3,KO,PG,0.616,0.073,0.2412,52.6
