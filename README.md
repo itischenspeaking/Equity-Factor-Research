@@ -54,14 +54,17 @@ the `research_log/` folder, updated weekly:
 - [Week 1](research_log/week_01.md) — Project setup, three
   cross-sectional factors, classical pairs trading, basket stat arb
   (post-pairs), and the sector homogeneity finding
-- [Week 2](research_log/week_02.md) — Fama-French factor attribution
-  (FF3 → FF6), omitted variable bias analysis, OU filter evaluation
+- [Week 2](research_log/week_02.md) — FF6 factor attribution,
+  rolling validation, IC analysis, IC-to-PnL gap discovery,
+  decision to pivot to Residual Momentum replication
 
 ## Reports
 
-- [Factor Attribution Report](results/reports/factor_attribution_report.md)
-  — FF3 and FF6 regression on all strategies, v1 vs v2 comparison,
-  omitted variable bias case study
+Report section is being restructured. The original factor
+attribution report has been retired following rolling validation
+and IC analysis that superseded its conclusions. A new
+comprehensive report will be published after the Residual
+Momentum analysis is complete.
 
 ## What's Implemented
 
