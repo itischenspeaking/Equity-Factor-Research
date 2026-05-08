@@ -96,6 +96,71 @@ Dispersion remained normal (~1.2%) in 2025, confirming that
 trading opportunities existed — the strategy just couldn't
 capitalise on them.
 
+## Day 5: Residual Momentum Replication
+
+Replicated the core methodology of Blitz, Huij & Martens (2011)
+"Residual Momentum" on the S&P 500 universe.
+
+**Implementation:** For each stock each month, run a rolling
+36-month FF3 regression to extract residuals. Rank stocks on
+standardised 12-1M residual returns (sum / std of formation-
+period residuals). Compare D10-D1 hedge portfolios for residual
+momentum vs total return momentum, with matched stock pools and
+identical time periods. Tested K=1, 3, 6 month overlapping
+holding periods following Jegadeesh & Titman (1993).
+
+**What replicated successfully:**
+
+- Volatility reduction: residual momentum vol is 46-52% of
+  total return momentum across all holding periods. Paper
+  reports ~55%. Core mechanism confirmed.
+- Dynamic factor exposure removal: conditional FF3 R² drops
+  from 0.457 (total) to 0.082 (residual). Paper reports
+  0.34-0.48 vs 0.13-0.17. The pattern is even stronger in
+  our sample.
+- Conditional beta structure: total return momentum loads
+  significantly on SMB (-0.75, SMB_UP +0.93) and HML (-0.93,
+  HML_UP +0.94). Residual momentum: all loadings insignificant
+  except marginal Mkt-RF. Exactly matches paper Table 2.
+- Max drawdown reduction: -47% (total) vs -16% (residual) at
+  K=1. Total return momentum never recovered from the 2020-2021
+  drawdown; residual momentum did.
+
+**What did not replicate:**
+
+- Sharpe ratio doubling. Paper reports residual Sharpe ≈ 2x
+  total. Our data shows residual Sharpe = 0.20 vs total = -0.06
+  (K=1). Residual is better but the absolute level is low, and
+  the improvement comes from total return momentum collapsing
+  rather than residual outperforming.
+- Monotonic decile returns. Both strategies show noisy, non-
+  monotonic decile patterns. D1 (losers) earns ~19% annualised
+  — higher than most other deciles. This is a universe issue:
+  462 S&P 500 large-cap stocks are too homogeneous (only ~40
+  stocks per decile), and large-cap losers exhibit strong mean
+  reversion in this period.
+
+**Interpretation:** The paper's central insight — that total
+return momentum carries unnecessary factor risk that can be
+removed by ranking on residuals — is confirmed out-of-sample
+on S&P 500 stocks in 2018-2024. The reason Sharpe doesn't
+double is that momentum alpha itself is approximately zero in
+this universe and period; you can't double zero. The risk
+reduction is real and would matter in a setting where momentum
+generates positive returns (larger universe, longer history, or
+different regime).
+
+**Ancillary finding:** S&P 500 large-cap losers show strong
+mean reversion, which undermines the short leg of any momentum
+strategy. This connects back to the mean reversion factor from
+Week 1 and is worth revisiting.
+
+**Code:** `factors/residual_momentum.py` — self-contained script
+with data prep, rolling regression, signal construction, decile
+portfolio builder (with overlapping holding periods), conditional
+FF regression, and visualisation. Results in
+`results/residual_momentum/K{1,3,6}/`.
+
 ---
 
 ## Structural Decisions
@@ -132,23 +197,23 @@ IC analysis, and the IC-to-PnL gap finding.
 
 ## TODO for next week
 
-- [ ] Read Blitz, Huij & Martens (2011) "Residual Momentum" in
-      full — understand the methodology before writing any code
-- [ ] Implement residual momentum: FF3 regression per stock →
-      extract residuals → 12-1 momentum on residuals → decile
-      long-short portfolio
-- [ ] Compare residual momentum vs total return momentum using
-      the existing backtest framework
-- [ ] Run FF6 attribution on residual momentum to verify reduced
-      factor loadings (this is the paper's central claim)
+- [ ] COVID crash case study: monthly returns of RMRF vs total
+      vs residual momentum in 2020, replicating paper Figure 3
+- [ ] Per-decile beta and size characteristics (paper Table 5)
+      to explain the U-shaped decile pattern
+- [ ] Revisit mean reversion factor — the D1 loser bounce
+      finding suggests large-cap losers may be a profitable
+      long-only signal
+- [ ] Write comprehensive report covering Weeks 1-2 findings
 - [ ] Rolling validation on residual momentum
-- [ ] Write new comprehensive report incorporating all findings
+- [ ] Consider expanding universe beyond S&P 500 to test whether
+      residual momentum works better with small caps included
 
 ## Reading list
 
 - [x] Avellaneda & Lee (2010) — skimmed
 - [x] Frazzini, Kabiller & Pedersen (2018) "Buffett's Alpha"
-- [ ] **Blitz, Huij & Martens (2011) "Residual Momentum"** — NEXT
+- [x] **Blitz, Huij & Martens (2011) "Residual Momentum"**
 - [ ] Huij & Lansdorp (2017) "Residual Momentum and Reversal
       Strategies Revisited" — replication/robustness check
 - [ ] Grundy & Martin (2001) "Understanding the Nature of the

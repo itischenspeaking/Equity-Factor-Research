@@ -12,6 +12,7 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
     python3 -m backtest.engine
     python3 factors/pairs_trading.py
     python3 factors/post_pairs.py
+    python3 -m factors.residual_momentum
     python3 -m analysis.factor_analysis
 
 ## Project Structure
@@ -23,11 +24,12 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
     │   └── download_data.py          # Download daily prices via yfinance
     │
     ├── factors/
-    │   ├── momentum.py               # 12-1 momentum
+    │   ├── momentum.py               # 12-1 momentum (daily frequency)
     │   ├── mean_reversion.py         # 5-day short-term reversal
     │   ├── volatility.py             # Low volatility factor
     │   ├── pairs_trading.py          # Classical pairs (cointegration + z-score)
-    │   └── post_pairs.py             # Basket stat arb (5-stock sector baskets)
+    │   ├── post_pairs.py             # Basket stat arb (5-stock sector baskets)
+    │   └── residual_momentum.py      # Residual momentum (Blitz et al. 2011)
     │
     ├── backtest/
     │   ├── engine.py                 # Backtest engine (monthly rebalance)
@@ -42,10 +44,13 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
     │   ├── pairs_trading/plots/            # Pair analysis charts
     │   ├── post_pairs/v1/plots/            # Basket v1 charts
     │   ├── post_pairs/v2/plots/            # Basket v2 charts
+    │   ├── residual_momentum/K{1,3,6}/     # Residual momentum plots
     │   └── reports/                        # Standalone analysis reports
+    │
     └── research_log/                 # Weekly research notes
         ├── week_01.md                # Week 1: setup, factors, pairs, post-pairs
-        └── week_02.md                # Week 2: Fama-French factor attribution
+        └── week_02.md                # Week 2: FF attribution, residual momentum
+
 ## Research Log
 
 Detailed findings, methodology notes, and analysis are documented in
@@ -56,7 +61,7 @@ the `research_log/` folder, updated weekly:
   (post-pairs), and the sector homogeneity finding
 - [Week 2](research_log/week_02.md) — FF6 factor attribution,
   rolling validation, IC analysis, IC-to-PnL gap discovery,
-  decision to pivot to Residual Momentum replication
+  residual momentum replication
 
 ## Reports
 
@@ -79,17 +84,34 @@ z-score signal generation, out-of-sample backtest on 4 pairs.
 2 to 5 same-sector stocks. Each stock is compared against the
 equal-weighted average of its 4 peers. Tested on 6 sector baskets.
 
+**Residual Momentum**: replication of Blitz, Huij & Martens (2011).
+Rolling 36-month FF3 regressions per stock, ranking on standardised
+12-1M residual returns. Compared to total return momentum with
+matched stock pools, K=1/3/6 overlapping holding periods, and
+conditional Fama-French attribution. Key finding: residual momentum
+reduces volatility to ~50% of total return momentum and eliminates
+dynamic factor exposure (R² drops from 0.46 to 0.08), confirming
+the paper's central result out-of-sample on S&P 500 2018-2024.
+
 **Factor Attribution**: FF5 + Momentum (6-factor) regression on all
 strategy returns. Decomposes performance into market, size, value,
 profitability, investment, and momentum exposures.
 
-## Key Finding
+## Key Findings
 
-Basket stat arb only works in sectors where no single stock can
-structurally decouple from its peers. Consumer staples (KO, PEP, PG,
-CL, KHC) delivered Sharpe 0.56 with -10.9% max drawdown.
-Semiconductors lost 75% because NVDA permanently diverged due to AI
-demand. See [Week 1 log](research_log/week_01.md) for full analysis.
+1. **Basket stat arb** only works in sectors where no single stock
+   can structurally decouple from its peers. Consumer staples
+   (KO, PEP, PG, CL, KHC) delivered Sharpe 0.56 with -10.9% max
+   drawdown. Semiconductors lost 75% because NVDA permanently
+   diverged. See [Week 1 log](research_log/week_01.md).
+
+2. **Residual momentum** successfully removes dynamic factor
+   exposure from momentum strategies. Total return momentum's
+   conditional FF3 R² = 0.46; residual momentum's R² = 0.08.
+   Volatility drops by half, max drawdown from -47% to -16%.
+   However, momentum alpha is approximately zero on S&P 500
+   large caps in 2018-2024, so the Sharpe improvement is modest
+   in absolute terms. See [Week 2 log](research_log/week_02.md).
 
 ## Data
 
