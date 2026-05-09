@@ -109,6 +109,15 @@ momentum vs total return momentum, with matched stock pools and
 identical time periods. Tested K=1, 3, 6 month overlapping
 holding periods following Jegadeesh & Titman (1993).
 
+**Debugging and controlled comparison:** Several iterations were
+needed to get the comparison right. Fixed date alignment between
+FF factor data and monthly returns (timestamp precision mismatch).
+Changed total return momentum signal from simple sum to compounded
+return — this had a material impact, flipping total return
+momentum from slightly positive to negative. Matched stock pools
+(`sig_total.where(sig_resid.notna())`) and aligned time periods
+so both strategies are evaluated on identical stock-months.
+
 **What replicated successfully:**
 
 - Volatility reduction: residual momentum vol is 46-52% of
@@ -130,57 +139,79 @@ holding periods following Jegadeesh & Titman (1993).
 
 - Sharpe ratio doubling. Paper reports residual Sharpe ~ 2x
   total. Our data shows residual Sharpe = 0.20 vs total = -0.06
-  (K=1). Residual is better but the absolute level is low, and
-  the improvement comes from total return momentum collapsing
-  rather than residual outperforming.
+  (K=1). Residual is better but the absolute level is low.
 - Monotonic decile returns. Both strategies show noisy, non-
   monotonic decile patterns. D1 (losers) earns ~19% annualised
   — higher than most other deciles.
 
-**Stock forensics — diagnosing the short leg problem:**
+**Code:** `factors/residual_momentum.py` — self-contained script
+with data prep, rolling regression, signal construction, decile
+portfolio builder (with overlapping holding periods), conditional
+FF regression, and visualisation. Results in
+`results/residual_momentum/K{1,3,6}/`.
 
-Printed D1/D10 composition and per-stock holding-period returns
-to understand why momentum doesn't work on S&P 500.
+## Day 6: Code Review, Diagnostics, and Universe Analysis
+
+Reviewed the residual momentum code for correctness. Verified
+the month-end trading timing: signal[t] uses data through t-2
+(skipping t-1), is known at t-1 month-end, and earns t's return.
+No look-ahead bias. Confirmed independently.
+
+**D1/D10 composition analysis:** Printed the 15 most frequent
+stocks in each extreme decile to understand the persistent
+U-shaped decile pattern.
+
+Total return momentum D10 is dominated by mega-growth: ENPH
+(64% of months), NVDA (59%), AMD (51%), LLY, NFLX, the
+semiconductor equipment cluster. D1 is structurally distressed
+large-caps: CCL (47%), NWL (47%), LUMN (46%), WBD, PCG. Both
+extremes are high-beta, high-vol — explaining the U-shape in
+absolute returns (both outperform low-beta mid-deciles in a
+bull market).
+
+Residual momentum composition is strikingly different. D10:
+PCAR (28%), ITW, PSX, COP, XOM, JPM, COST — industrials,
+energy, financials with genuine firm-specific outperformance.
+D1: VRSN (33%), MAA, CNP, DXC — and notably NVDA at 23%.
+Much more dispersed (max frequency 33% vs 64%), indicating
+higher turnover and less concentration.
+
+**Stock forensics — four case studies:**
 
 - NVDA: in residual D1 for 17 consecutive months (2018-06 to
   2019-11) while simultaneously in total return D10. Residual
-  signal correctly identified that NVDA's returns were all
-  factor exposure, not firm-specific. But avg hold return in
+  signal correctly identified that NVDA's returns were factor
+  exposure, not firm-specific momentum. But avg hold return in
   D1 months was +0.32% — shorting it lost money.
-- ENPH: in total D10 (score +246%) while residual D1 (score
-  -3.42) in mid-2021. The two signals directly contradicted.
-  ENPH's D1 months averaged +4.03% hold return — disastrous
-  for the short leg.
+- ENPH: in total D10 (score +246%) and residual D1 (score
+  -3.42) simultaneously in mid-2021. The signals directly
+  contradicted. ENPH's D1 months averaged +4.03% hold return
+  — disastrous for the short leg.
 - CCL: the only stock where D1 shorting was profitable (avg
   hold return -3.59%). Genuine structural decline.
 - PCAR: model residual D10 stock. 23 months in D10, avg hold
-  return +3.40%, cumulative +78%. Steady firm-specific
-  outperformance that total return momentum missed (ranked
-  only D7-D9 in total).
+  return +3.40%, cumulative contribution +78%. Steady firm-
+  specific outperformance invisible to total return momentum
+  (ranked only D7-D9 in total).
 
 **Root cause — universe composition:**
 
-The paper uses CRSP (all NYSE/AMEX/Nasdaq stocks, thousands of
-names including micro-caps). In that universe, D1 contains
-genuine penny stocks and failing companies that continue to
-decline — the short leg works. In S&P 500, D1 is populated by
+The paper uses CRSP (all NYSE/AMEX/Nasdaq, thousands of names
+including micro-caps). D1 in that universe contains genuine
+penny stocks and failing companies that continue to decline —
+the short leg generates alpha. In S&P 500, D1 is populated by
 temporarily distressed large-caps (CCL, LUMN, WBD) that almost
-always recover because they have the balance sheets to survive.
-The short leg of momentum earns POSITIVE returns, which kills
-the D10-D1 hedge.
+always recover because they have the balance sheets and index
+inclusion to survive. The short leg of momentum earns POSITIVE
+returns on average, which kills the D10-D1 hedge regardless of
+how well the long leg performs.
 
-This is the single most important finding from the replication:
-**the same factor can work or fail depending entirely on the
+**This is the single most important finding from the replication:
+the same factor can work or fail depending entirely on the
 universe it operates in.** The paper's methodology is correct,
 the signal construction is correct, the risk reduction is real
 — but the alpha comes from the short leg, and the short leg
 requires a universe where losers actually keep losing.
-
-**Code:** `factors/residual_momentum.py` — self-contained script
-with data prep, rolling regression, signal construction, decile
-portfolio builder (with overlapping holding periods), conditional
-FF regression, stock forensics, and visualisation. Results in
-`results/residual_momentum/K{1,3,6}/`.
 
 ---
 
