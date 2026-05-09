@@ -61,7 +61,7 @@ the `research_log/` folder, updated weekly:
   (post-pairs), and the sector homogeneity finding
 - [Week 2](research_log/week_02.md) — FF6 factor attribution,
   rolling validation, IC analysis, IC-to-PnL gap discovery,
-  residual momentum replication
+  residual momentum replication, universe impact analysis
 
 ## Reports
 
@@ -88,10 +88,9 @@ equal-weighted average of its 4 peers. Tested on 6 sector baskets.
 Rolling 36-month FF3 regressions per stock, ranking on standardised
 12-1M residual returns. Compared to total return momentum with
 matched stock pools, K=1/3/6 overlapping holding periods, and
-conditional Fama-French attribution. Key finding: residual momentum
-reduces volatility to ~50% of total return momentum and eliminates
-dynamic factor exposure (R² drops from 0.46 to 0.08), confirming
-the paper's central result out-of-sample on S&P 500 2018-2024.
+conditional Fama-French attribution. Includes stock-level forensics
+tracing individual names through D1/D10 assignment and holding-
+period returns.
 
 **Factor Attribution**: FF5 + Momentum (6-factor) regression on all
 strategy returns. Decomposes performance into market, size, value,
@@ -99,19 +98,33 @@ profitability, investment, and momentum exposures.
 
 ## Key Findings
 
-1. **Basket stat arb** only works in sectors where no single stock
+1. **Universe determines whether a factor works, not just how well
+   it works.** Replicating Blitz et al. (2011) residual momentum
+   on S&P 500, we confirmed the paper's risk-reduction mechanism
+   (vol halved, dynamic factor R² from 0.46 to 0.08, max drawdown
+   from -47% to -16%) but found near-zero momentum alpha. Stock
+   forensics revealed the cause: S&P 500 "losers" (D1) are
+   temporarily distressed large-caps (CCL, LUMN, WBD) that
+   reliably recover — their average hold return is positive,
+   making the short leg unprofitable. NVDA spent 17 months in
+   residual D1 while in total return D10, demonstrating that its
+   returns were driven by factor exposure, not firm-specific
+   momentum. The same methodology works in the paper's CRSP
+   universe because D1 there contains genuine micro-cap failures
+   that keep declining. See [Week 2 Day 5](research_log/week_02.md).
+
+2. **Basket stat arb** only works in sectors where no single stock
    can structurally decouple from its peers. Consumer staples
    (KO, PEP, PG, CL, KHC) delivered Sharpe 0.56 with -10.9% max
    drawdown. Semiconductors lost 75% because NVDA permanently
    diverged. See [Week 1 log](research_log/week_01.md).
 
-2. **Residual momentum** successfully removes dynamic factor
-   exposure from momentum strategies. Total return momentum's
-   conditional FF3 R² = 0.46; residual momentum's R² = 0.08.
-   Volatility drops by half, max drawdown from -47% to -16%.
-   However, momentum alpha is approximately zero on S&P 500
-   large caps in 2018-2024, so the Sharpe improvement is modest
-   in absolute terms. See [Week 2 log](research_log/week_02.md).
+3. **IC-to-PnL gap**: a factor can have statistically significant
+   predictive power (IC = 0.105, t = 3.76) while the trading
+   strategy built on it loses money (-17%). The signal is right
+   but the execution layer (entry thresholds, holding periods)
+   fails to convert predictions into profit. See
+   [Week 2 Day 4](research_log/week_02.md).
 
 ## Data
 

@@ -128,37 +128,58 @@ holding periods following Jegadeesh & Titman (1993).
 
 **What did not replicate:**
 
-- Sharpe ratio doubling. Paper reports residual Sharpe ≈ 2x
+- Sharpe ratio doubling. Paper reports residual Sharpe ~ 2x
   total. Our data shows residual Sharpe = 0.20 vs total = -0.06
   (K=1). Residual is better but the absolute level is low, and
   the improvement comes from total return momentum collapsing
   rather than residual outperforming.
 - Monotonic decile returns. Both strategies show noisy, non-
   monotonic decile patterns. D1 (losers) earns ~19% annualised
-  — higher than most other deciles. This is a universe issue:
-  462 S&P 500 large-cap stocks are too homogeneous (only ~40
-  stocks per decile), and large-cap losers exhibit strong mean
-  reversion in this period.
+  — higher than most other deciles.
 
-**Interpretation:** The paper's central insight — that total
-return momentum carries unnecessary factor risk that can be
-removed by ranking on residuals — is confirmed out-of-sample
-on S&P 500 stocks in 2018-2024. The reason Sharpe doesn't
-double is that momentum alpha itself is approximately zero in
-this universe and period; you can't double zero. The risk
-reduction is real and would matter in a setting where momentum
-generates positive returns (larger universe, longer history, or
-different regime).
+**Stock forensics — diagnosing the short leg problem:**
 
-**Ancillary finding:** S&P 500 large-cap losers show strong
-mean reversion, which undermines the short leg of any momentum
-strategy. This connects back to the mean reversion factor from
-Week 1 and is worth revisiting.
+Printed D1/D10 composition and per-stock holding-period returns
+to understand why momentum doesn't work on S&P 500.
+
+- NVDA: in residual D1 for 17 consecutive months (2018-06 to
+  2019-11) while simultaneously in total return D10. Residual
+  signal correctly identified that NVDA's returns were all
+  factor exposure, not firm-specific. But avg hold return in
+  D1 months was +0.32% — shorting it lost money.
+- ENPH: in total D10 (score +246%) while residual D1 (score
+  -3.42) in mid-2021. The two signals directly contradicted.
+  ENPH's D1 months averaged +4.03% hold return — disastrous
+  for the short leg.
+- CCL: the only stock where D1 shorting was profitable (avg
+  hold return -3.59%). Genuine structural decline.
+- PCAR: model residual D10 stock. 23 months in D10, avg hold
+  return +3.40%, cumulative +78%. Steady firm-specific
+  outperformance that total return momentum missed (ranked
+  only D7-D9 in total).
+
+**Root cause — universe composition:**
+
+The paper uses CRSP (all NYSE/AMEX/Nasdaq stocks, thousands of
+names including micro-caps). In that universe, D1 contains
+genuine penny stocks and failing companies that continue to
+decline — the short leg works. In S&P 500, D1 is populated by
+temporarily distressed large-caps (CCL, LUMN, WBD) that almost
+always recover because they have the balance sheets to survive.
+The short leg of momentum earns POSITIVE returns, which kills
+the D10-D1 hedge.
+
+This is the single most important finding from the replication:
+**the same factor can work or fail depending entirely on the
+universe it operates in.** The paper's methodology is correct,
+the signal construction is correct, the risk reduction is real
+— but the alpha comes from the short leg, and the short leg
+requires a universe where losers actually keep losing.
 
 **Code:** `factors/residual_momentum.py` — self-contained script
 with data prep, rolling regression, signal construction, decile
 portfolio builder (with overlapping holding periods), conditional
-FF regression, and visualisation. Results in
+FF regression, stock forensics, and visualisation. Results in
 `results/residual_momentum/K{1,3,6}/`.
 
 ---
@@ -200,14 +221,16 @@ IC analysis, and the IC-to-PnL gap finding.
 - [ ] COVID crash case study: monthly returns of RMRF vs total
       vs residual momentum in 2020, replicating paper Figure 3
 - [ ] Per-decile beta and size characteristics (paper Table 5)
-      to explain the U-shaped decile pattern
+      to explain the U-shaped decile pattern quantitatively
+- [ ] Consider expanding universe beyond S&P 500 — the forensics
+      show the short leg problem is a universe issue, not a
+      methodology issue. Russell 2000 or CRSP-equivalent data
+      would be the proper test.
 - [ ] Revisit mean reversion factor — the D1 loser bounce
       finding suggests large-cap losers may be a profitable
       long-only signal
 - [ ] Write comprehensive report covering Weeks 1-2 findings
 - [ ] Rolling validation on residual momentum
-- [ ] Consider expanding universe beyond S&P 500 to test whether
-      residual momentum works better with small caps included
 
 ## Reading list
 

@@ -539,3 +539,102 @@ if __name__ == "__main__":
 
 
     print("\n✓ Done. Check results/residual_momentum/ for plots.")
+
+# ── Diagnostic: who's in D1 and D10? ──
+    print("\n── Diagnostic: D1/D10 Composition ──")
+
+    for name, sig in [("Total Return Mom", sig_total),
+                      ("Residual Mom", sig_resid)]:
+        assignments = form_decile_assignments(sig, n_quantiles=10)
+
+        d1_counts = pd.Series(dtype=int)
+        d10_counts = pd.Series(dtype=int)
+
+        for idx, ranks in assignments.items():
+            d1_stocks = ranks[ranks == 1].index
+            d10_stocks = ranks[ranks == 10].index
+            d1_counts = d1_counts.add(
+                pd.Series(1, index=d1_stocks), fill_value=0)
+            d10_counts = d10_counts.add(
+                pd.Series(1, index=d10_stocks), fill_value=0)
+
+        n_months = len(assignments)
+        print(f"\n  {name} ({n_months} formation months)")
+        print(f"  D1 (LOSERS) — top 15 most frequent:")
+        for tk, cnt in d1_counts.sort_values(ascending=False).head(15).items():
+            print(f"    {tk:<6s}  {int(cnt):>3d}/{n_months} months "
+                  f"({cnt/n_months:.0%})")
+        print(f"  D10 (WINNERS) — top 15 most frequent:")
+        for tk, cnt in d10_counts.sort_values(ascending=False).head(15).items():
+            print(f"    {tk:<6s}  {int(cnt):>3d}/{n_months} months "
+                  f"({cnt/n_months:.0%})")
+
+# ── Deep dive: single stock forensics ──
+    print("\n── Stock Forensics ──")
+
+    for ticker in ["NVDA", "ENPH", "CCL", "PCAR"]:
+        if ticker not in sig_resid.columns:
+            continue
+
+        assignments_resid = form_decile_assignments(sig_resid, 10)
+        assignments_total = form_decile_assignments(sig_total, 10)
+
+        print(f"\n  {'─' * 60}")
+        print(f"  {ticker}")
+        print(f"  {'─' * 60}")
+        print(f"  {'Date':<10s} {'Decile':>8s} {'Decile':>8s} "
+              f"{'Resid':>8s} {'Total':>8s} {'Next Mo':>8s}")
+        print(f"  {'':10s} {'(resid)':>8s} {'(total)':>8s} "
+              f"{'Score':>8s} {'Score':>8s} {'Return':>8s}")
+        print(f"  {'─' * 60}")
+
+        d1_returns = []
+        d10_returns = []
+
+        for idx in sorted(assignments_resid.keys()):
+            ranks_r = assignments_resid[idx]
+            if ticker not in ranks_r.index:
+                continue
+
+            decile_r = int(ranks_r[ticker])
+            if decile_r not in [1, 10]:
+                continue
+
+            date = sig_resid.index[idx]
+            score_r = sig_resid.iloc[idx].get(ticker, np.nan)
+            score_t = sig_total.iloc[idx].get(ticker, np.nan)
+
+            # Next month return
+            if idx < len(monthly_ret) - 1:
+                next_ret = monthly_ret.iloc[idx].get(ticker, np.nan)
+            else:
+                next_ret = np.nan
+
+            # What decile in total return?
+            decile_t = "—"
+            if idx in assignments_total and ticker in assignments_total[idx].index:
+                decile_t = str(int(assignments_total[idx][ticker]))
+
+            flag = "◀" if decile_r == 1 else "▶"
+            print(f"  {date.strftime('%Y-%m'):<10s} "
+                  f"{'D'+str(decile_r):>8s} "
+                  f"{'D'+decile_t:>8s} "
+                  f"{score_r:>8.2f} "
+                  f"{score_t:>7.1%} "
+                  f"{next_ret:>7.1%}  {flag}")
+
+            if decile_r == 1:
+                d1_returns.append(next_ret)
+            else:
+                d10_returns.append(next_ret)
+
+        if d1_returns:
+            d1_arr = [r for r in d1_returns if not np.isnan(r)]
+            print(f"\n  D1 months: {len(d1_arr)}, "
+                  f"avg next-mo return: {np.mean(d1_arr):.2%}, "
+                  f"total contrib: {np.sum(d1_arr):.2%}")
+        if d10_returns:
+            d10_arr = [r for r in d10_returns if not np.isnan(r)]
+            print(f"  D10 months: {len(d10_arr)}, "
+                  f"avg next-mo return: {np.mean(d10_arr):.2%}, "
+                  f"total contrib: {np.sum(d10_arr):.2%}")
