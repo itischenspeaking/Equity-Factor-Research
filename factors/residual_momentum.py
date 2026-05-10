@@ -98,6 +98,17 @@ def prepare_data(csv_path="data/close_prices.csv"):
               f"{common_dates[-1].strftime('%Y-%m')}")
     print(f"FF3 factors loaded: {ff3.columns.tolist()}")
 
+    # Exclude stock-months with returns beyond ±300%.
+    # CRSP handles corporate actions (ticker changes, bankruptcy
+    # re-emergences, reverse splits) correctly; yfinance does not.
+    # This filter removes data errors, not genuine returns.
+    n_before = monthly_ret.notna().sum().sum()
+    monthly_ret = monthly_ret.where(monthly_ret.abs() <= 3.0)
+    excess_ret = excess_ret.where(monthly_ret.notna())
+    n_after = monthly_ret.notna().sum().sum()
+    print(f"Data quality filter (|ret| > 300%): "
+          f"removed {n_before - n_after} stock-months")
+
     return excess_ret, ff3, monthly_ret
 
 
@@ -482,6 +493,20 @@ if __name__ == "__main__":
         excess_ret, ff3, window=36)
     sig_total_raw = compute_total_return_momentum(monthly_ret)
 
+    # Price filter: exclude stocks below $5 in any given month.
+    # Paper excludes <$1; we use $5 given shorter sample and
+    # post-2015 price levels.
+    monthly_price = pd.read_csv(
+        "data/close_prices.csv", index_col=0, parse_dates=True
+    ).resample("ME").last()
+    monthly_price.index = monthly_price.index + pd.offsets.MonthEnd(0)
+    price_ok = monthly_price.reindex(
+        index=sig_resid.index, columns=sig_resid.columns) >= 5.0
+    sig_resid = sig_resid.where(price_ok)
+    sig_total_raw = sig_total_raw.where(price_ok)
+    n_excluded = (~price_ok).sum().sum()
+    print(f"\n  Price filter (<$5): excluded {n_excluded} stock-months")
+
     # Match stock pool: only use stocks where BOTH signals exist
     sig_total = sig_total_raw.where(sig_resid.notna())
     print(f"\n  Stock-month alignment:")
@@ -638,3 +663,42 @@ if __name__ == "__main__":
             print(f"  D10 months: {len(d10_arr)}, "
                   f"avg next-mo return: {np.mean(d10_arr):.2%}, "
                   f"total contrib: {np.sum(d10_arr):.2%}")
+
+# ── Diagnostic: worst months for total return momentum ──
+    print("\n── Total Return Momentum: Worst 10 Months ──")
+    assignments_t = form_decile_assignments(sig_total, n_quantiles=10)
+
+    month_details = []
+    for t in range(len(monthly_ret)):
+        if t not in assignments_t:
+            continue
+        date = monthly_ret.index[t]
+        fwd = monthly_ret.iloc[t]
+        ranks = assignments_t[t]
+
+        d1_stocks = ranks[ranks == 1].index
+        d10_stocks = ranks[ranks == 10].index
+
+        d1_ret = fwd[d1_stocks.intersection(fwd.dropna().index)]
+        d10_ret = fwd[d10_stocks.intersection(fwd.dropna().index)]
+
+        hedge = d10_ret.mean() - d1_ret.mean()
+        month_details.append({
+            "date": date, "hedge": hedge,
+            "d1_mean": d1_ret.mean(), "d10_mean": d10_ret.mean(),
+            "d1_max": d1_ret.max(), "d1_max_tk": d1_ret.idxmax() if len(d1_ret) > 0 else "",
+            "d1_top3": d1_ret.nlargest(3),
+            "d1_count": len(d1_ret),
+        })
+
+    md = sorted(month_details, key=lambda x: x["hedge"])
+
+    for m in md[:10]:
+        print(f"\n  {m['date'].strftime('%Y-%m')}  "
+              f"Hedge: {m['hedge']:+.1%}  "
+              f"D10 avg: {m['d10_mean']:+.1%}  "
+              f"D1 avg: {m['d1_mean']:+.1%}  "
+              f"D1 stocks: {m['d1_count']}")
+        print(f"    D1 top 3 gainers (short leg killers):")
+        for tk, ret in m["d1_top3"].items():
+            print(f"      {tk:<8s} {ret:+.1%}")
