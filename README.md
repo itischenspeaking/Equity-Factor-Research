@@ -2,7 +2,7 @@
 
 Equity factor research and statistical arbitrage from scratch in
 Python. This project implements classic cross-sectional factors and
-a basket stat arb strategy, backtests them on 462 S&P 500 stocks
+a basket stat arb strategy, backtests them on S&P 1500 stocks
 (2015–2024), and documents findings in a weekly research log.
 
 ## Quick Start
@@ -20,7 +20,8 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
     Equity-Factor-Research/
     │
     ├── data/
-    │   ├── sp500_tickers.csv         # S&P 500 ticker list (static)
+    │   ├── sp500_tickers.csv         # S&P 500 ticker list (legacy)
+    │   ├── sp1500_tickers.csv        # S&P 1500 ticker list with index tags
     │   └── download_data.py          # Download daily prices via yfinance
     │
     ├── factors/
@@ -53,23 +54,36 @@ a basket stat arb strategy, backtests them on 462 S&P 500 stocks
 
 ## Research Log
 
-Detailed findings, methodology notes, and analysis are documented in
-the `research_log/` folder, updated weekly:
-
 - [Week 1](research_log/week_01.md) — Project setup, three
   cross-sectional factors, classical pairs trading, basket stat arb
   (post-pairs), and the sector homogeneity finding
 - [Week 2](research_log/week_02.md) — FF6 factor attribution,
-  rolling validation, IC analysis, IC-to-PnL gap discovery,
-  residual momentum replication, universe impact analysis
+  rolling validation, IC analysis, residual momentum replication,
+  stock forensics, universe expansion to S&P 1500
 
-## Reports
+## Key Findings
 
-Report section is being restructured. The original factor
-attribution report has been retired following rolling validation
-and IC analysis that superseded its conclusions. A new
-comprehensive report will be published after the Residual
-Momentum analysis is complete.
+1. **Universe determines whether a factor works.** Replicating
+   Blitz et al. (2011) residual momentum, we confirmed the
+   paper's risk-reduction mechanism (vol halved, dynamic factor
+   R² from 0.39 to 0.08, max drawdown from -52% to -20%) on
+   S&P 1500. Stock forensics revealed that S&P 500 "losers"
+   are temporarily distressed large-caps that reliably recover,
+   making the short leg unprofitable. Expanding to S&P 1500
+   improved residual momentum Sharpe from 0.20 to 0.35 (K=3).
+   NVDA spent 17 months in residual D1 while in total return
+   D10, demonstrating its returns were factor exposure, not
+   firm-specific momentum.
+
+2. **Basket stat arb** only works in sectors where no single
+   stock can structurally decouple from its peers. Consumer
+   staples delivered Sharpe 0.56; semiconductors lost 75%
+   because NVDA permanently diverged.
+
+3. **IC-to-PnL gap**: a factor can have statistically significant
+   predictive power (IC = 0.105, t = 3.76) while the trading
+   strategy built on it loses money (-17%). The signal is right
+   but the execution layer fails to convert.
 
 ## What's Implemented
 
@@ -81,55 +95,24 @@ with monthly rebalance and 10 bps transaction cost.
 z-score signal generation, out-of-sample backtest on 4 pairs.
 
 **Post-Pairs (Basket Stat Arb)**: extension of pairs trading from
-2 to 5 same-sector stocks. Each stock is compared against the
-equal-weighted average of its 4 peers. Tested on 6 sector baskets.
+2 to 5 same-sector stocks.
 
 **Residual Momentum**: replication of Blitz, Huij & Martens (2011).
-Rolling 36-month FF3 regressions per stock, ranking on standardised
-12-1M residual returns. Compared to total return momentum with
-matched stock pools, K=1/3/6 overlapping holding periods, and
-conditional Fama-French attribution. Includes stock-level forensics
-tracing individual names through D1/D10 assignment and holding-
-period returns.
+Rolling 36-month FF3 regressions, standardised 12-1M residual
+ranking. Compared to total return momentum with matched stock
+pools, K=1/3/6 overlapping holding periods, conditional FF
+attribution, and stock-level forensics.
 
-**Factor Attribution**: FF5 + Momentum (6-factor) regression on all
-strategy returns. Decomposes performance into market, size, value,
-profitability, investment, and momentum exposures.
-
-## Key Findings
-
-1. **Universe determines whether a factor works, not just how well
-   it works.** Replicating Blitz et al. (2011) residual momentum
-   on S&P 500, we confirmed the paper's risk-reduction mechanism
-   (vol halved, dynamic factor R² from 0.46 to 0.08, max drawdown
-   from -47% to -16%) but found near-zero momentum alpha. Stock
-   forensics revealed the cause: S&P 500 "losers" (D1) are
-   temporarily distressed large-caps (CCL, LUMN, WBD) that
-   reliably recover — their average hold return is positive,
-   making the short leg unprofitable. NVDA spent 17 months in
-   residual D1 while in total return D10, demonstrating that its
-   returns were driven by factor exposure, not firm-specific
-   momentum. The same methodology works in the paper's CRSP
-   universe because D1 there contains genuine micro-cap failures
-   that keep declining. See [Week 2 Day 5](research_log/week_02.md).
-
-2. **Basket stat arb** only works in sectors where no single stock
-   can structurally decouple from its peers. Consumer staples
-   (KO, PEP, PG, CL, KHC) delivered Sharpe 0.56 with -10.9% max
-   drawdown. Semiconductors lost 75% because NVDA permanently
-   diverged. See [Week 1 log](research_log/week_01.md).
-
-3. **IC-to-PnL gap**: a factor can have statistically significant
-   predictive power (IC = 0.105, t = 3.76) while the trading
-   strategy built on it loses money (-17%). The signal is right
-   but the execution layer (entry thresholds, holding periods)
-   fails to convert predictions into profit. See
-   [Week 2 Day 4](research_log/week_02.md).
+**Factor Attribution**: FF5 + Momentum (6-factor) regression on
+all strategy returns.
 
 ## Data
 
-- **Universe**: 462 S&P 500 constituents
+- **Universe**: 1469 S&P 1500 constituents (497 SP500 + 390
+  SP400 + 582 SP600)
 - **Period**: 2015–2024 daily data
 - **Source**: Yahoo Finance via yfinance
-- Data files (CSVs) are gitignored — run `download_data.py` to
-  regenerate
+- **Filters**: price < $5 excluded; |monthly return| > 300%
+  excluded (yfinance corporate action errors)
+- Data files are gitignored — run `download_data.py` to regenerate
+- Use `--sp500` flag for legacy S&P 500 only universe
