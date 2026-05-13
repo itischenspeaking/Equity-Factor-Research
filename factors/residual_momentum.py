@@ -801,3 +801,54 @@ if __name__ == "__main__":
           f"    Dec: {jan_dec[12][0]*100:>7.2f}% (t={jan_dec[12][1]:>.2f})")
     print(f"    Resid mom  Jan: {jan_dec[1][2]*100:>7.2f}% (t={jan_dec[1][3]:>.2f})"
           f"    Dec: {jan_dec[12][2]*100:>7.2f}% (t={jan_dec[12][3]:>.2f})")
+# ── Phase 8: Decile Characteristics (Paper Table 5) ──
+    print("\n── Phase 8: Decile Characteristics (Paper Table 5) ──")
+
+    # Use K=1 decile returns aligned to common dates
+    dec_total_k1 = dec_total.loc[common_dates]  # need this from K=1 loop
+    dec_resid_k1 = dec_resid.loc[common_dates]
+
+    for name, dec in [("Total Return Momentum", dec_total_k1),
+                      ("Residual Momentum", dec_resid_k1)]:
+        print(f"\n  {name}")
+        print(f"  {'Decile':<8s} {'Return':>8s} {'Vol':>8s} "
+              f"{'Beta':>8s} {'SMB':>8s} {'HML':>8s} {'R²':>6s}")
+        print(f"  {'─' * 50}")
+
+        ff_aligned = ff3.loc[dec.index]
+        X = sm.add_constant(ff_aligned[["Mkt-RF", "SMB", "HML"]])
+
+        for q in dec.columns:
+            y = dec[q].dropna()
+            X_q = X.loc[y.index]
+            valid = y.notna() & X_q.notna().all(axis=1)
+
+            if valid.sum() < 20:
+                continue
+
+            model = sm.OLS(y[valid], X_q[valid]).fit()
+            ann_ret = y.mean() * 12
+            ann_vol = y.std() * np.sqrt(12)
+            beta = model.params["Mkt-RF"]
+            smb = model.params["SMB"]
+            hml = model.params["HML"]
+            r2 = model.rsquared
+
+            label = f"D{q}" if q not in [1, 10] else \
+                    f"D{q} ({'L' if q == 1 else 'W'})"
+            print(f"  {label:<8s} {ann_ret:>7.1%} {ann_vol:>7.1%} "
+                  f"{beta:>8.2f} {smb:>8.2f} {hml:>8.2f} {r2:>5.2f}")
+
+        # D10-D1 hedge
+        hedge = dec[10] - dec[1]
+        y_h = hedge.dropna()
+        X_h = X.loc[y_h.index]
+        valid_h = y_h.notna() & X_h.notna().all(axis=1)
+        if valid_h.sum() >= 20:
+            model_h = sm.OLS(y_h[valid_h], X_h[valid_h]).fit()
+            print(f"  {'D10-D1':<8s} {y_h.mean()*12:>7.1%} "
+                  f"{y_h.std()*np.sqrt(12):>7.1%} "
+                  f"{model_h.params['Mkt-RF']:>8.2f} "
+                  f"{model_h.params['SMB']:>8.2f} "
+                  f"{model_h.params['HML']:>8.2f} "
+                  f"{model_h.rsquared:>5.2f}")
