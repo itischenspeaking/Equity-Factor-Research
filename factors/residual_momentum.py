@@ -98,10 +98,10 @@ def prepare_data(csv_path="data/close_prices.csv"):
               f"{common_dates[-1].strftime('%Y-%m')}")
     print(f"FF3 factors loaded: {ff3.columns.tolist()}")
 
-    # Exclude stock-months with returns beyond ±300%.
-    # CRSP handles corporate actions (ticker changes, bankruptcy
-    # re-emergences, reverse splits) correctly; yfinance does not.
-    # This filter removes data errors, not genuine returns.
+    # Data quality: exclude |monthly return| > 300%.
+    # yfinance does not handle corporate actions (ticker changes,
+    # bankruptcy re-emergences) correctly; CRSP does. This removes
+    # data errors, not genuine returns.
     n_before = monthly_ret.notna().sum().sum()
     monthly_ret = monthly_ret.where(monthly_ret.abs() <= 3.0)
     excess_ret = excess_ret.where(monthly_ret.notna())
@@ -186,8 +186,6 @@ def compute_total_return_momentum(monthly_ret, skip=1, lookback=12):
     for t in range(lookback, len(monthly_ret)):
         ret_window = monthly_ret.iloc[t - lookback:t - skip]
         valid = ret_window.notna().sum() >= 8
-
-        # Compounded cumulative return (not simple sum)
         cumulative = (1 + ret_window).prod() - 1
         signal.iloc[t] = cumulative.where(valid)
 
@@ -476,6 +474,194 @@ def plot_decile_returns(decile_total, decile_resid,
     print(f"  Saved: {save_dir}/decile_returns.png")
 
 
+def plot_crisis_months(hedge_total, hedge_resid, ff3,
+                       years=[2020, 2022],
+                       save_dir="results/residual_momentum"):
+    """
+    Paper Figure 3: monthly RMRF, total momentum, and residual momentum
+    during market reversal / crisis years. hedge_total and hedge_resid
+    should be K=1 monthly hedge returns.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
+
+    fig, axes = plt.subplots(1, len(years), figsize=(7 * len(years), 5))
+    if len(years) == 1:
+        axes = [axes]
+
+    for ax, year in zip(axes, years):
+        months = pd.date_range(f"{year}-01-31", f"{year}-12-31", freq="ME")
+
+        rmrf = ff3["Mkt-RF"].reindex(months)
+        total = hedge_total.reindex(months)
+        resid = hedge_resid.reindex(months)
+
+        labels = [m.strftime("%b") for m in months]
+        x = np.arange(len(labels))
+        w = 0.25
+
+        ax.bar(x - w, rmrf.values * 100, w,
+               label="RMRF", color="#888888", alpha=0.8)
+        ax.bar(x, total.values * 100, w,
+               label="Total Mom", color="#d62728", alpha=0.8)
+        ax.bar(x + w, resid.values * 100, w,
+               label="Residual Mom", color="#1f77b4", alpha=0.8)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, fontsize=9)
+        ax.set_ylabel("Monthly Return (%)")
+        ax.set_title(f"{year}")
+        ax.legend(fontsize=8, loc="best")
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.grid(True, alpha=0.3, axis="y")
+
+        missing_t = total.isna().sum()
+        missing_r = resid.isna().sum()
+        if missing_t or missing_r:
+            print(f"  Warning: {year} has missing months "
+                  f"(total={missing_t}, residual={missing_r})")
+
+    fig.suptitle(
+        "Monthly Returns During Market Reversals "
+        "(cf. Paper Figure 3)",
+        fontsize=13, y=1.02)
+    fig.tight_layout()
+    out = Path(save_dir) / "crisis_months.png"
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {out}")
+
+
+# ── 7. DIAGNOSTICS (uncomment as needed) ────────────────────────────
+
+def print_d1_d10_composition(sig_total, sig_resid, top_n=15):
+    """Print most frequent D1/D10 members for both strategies."""
+    for name, sig in [("Total Return Mom", sig_total),
+                      ("Residual Mom", sig_resid)]:
+        assignments = form_decile_assignments(sig, n_quantiles=10)
+        d1_counts = pd.Series(dtype=int)
+        d10_counts = pd.Series(dtype=int)
+
+        for idx, ranks in assignments.items():
+            d1_stocks = ranks[ranks == 1].index
+            d10_stocks = ranks[ranks == 10].index
+            d1_counts = d1_counts.add(
+                pd.Series(1, index=d1_stocks), fill_value=0)
+            d10_counts = d10_counts.add(
+                pd.Series(1, index=d10_stocks), fill_value=0)
+
+        n_months = len(assignments)
+        print(f"\n  {name} ({n_months} formation months)")
+        print(f"  D1 (LOSERS) — top {top_n} most frequent:")
+        for tk, cnt in d1_counts.sort_values(ascending=False).head(top_n).items():
+            print(f"    {tk:<6s}  {int(cnt):>3d}/{n_months} months "
+                  f"({cnt/n_months:.0%})")
+        print(f"  D10 (WINNERS) — top {top_n} most frequent:")
+        for tk, cnt in d10_counts.sort_values(ascending=False).head(top_n).items():
+            print(f"    {tk:<6s}  {int(cnt):>3d}/{n_months} months "
+                  f"({cnt/n_months:.0%})")
+
+
+def print_stock_forensics(tickers, sig_resid, sig_total, monthly_ret):
+    """Per-stock case study: when in D1/D10, what happened next."""
+    assignments_resid = form_decile_assignments(sig_resid, 10)
+    assignments_total = form_decile_assignments(sig_total, 10)
+
+    for ticker in tickers:
+        if ticker not in sig_resid.columns:
+            continue
+
+        print(f"\n  {'─' * 60}")
+        print(f"  {ticker}")
+        print(f"  {'─' * 60}")
+        print(f"  {'Date':<10s} {'Decile':>8s} {'Decile':>8s} "
+              f"{'Resid':>8s} {'Total':>8s} {'Hold Mo':>8s}")
+        print(f"  {'':10s} {'(resid)':>8s} {'(total)':>8s} "
+              f"{'Score':>8s} {'Score':>8s} {'Return':>8s}")
+        print(f"  {'─' * 60}")
+
+        d1_returns, d10_returns = [], []
+
+        for idx in sorted(assignments_resid.keys()):
+            ranks_r = assignments_resid[idx]
+            if ticker not in ranks_r.index:
+                continue
+            decile_r = int(ranks_r[ticker])
+            if decile_r not in [1, 10]:
+                continue
+
+            date = sig_resid.index[idx]
+            score_r = sig_resid.iloc[idx].get(ticker, np.nan)
+            score_t = sig_total.iloc[idx].get(ticker, np.nan)
+            hold_ret = monthly_ret.iloc[idx].get(ticker, np.nan)
+
+            decile_t = "—"
+            if idx in assignments_total and ticker in assignments_total[idx].index:
+                decile_t = str(int(assignments_total[idx][ticker]))
+
+            flag = "◀" if decile_r == 1 else "▶"
+            print(f"  {date.strftime('%Y-%m'):<10s} "
+                  f"{'D'+str(decile_r):>8s} "
+                  f"{'D'+decile_t:>8s} "
+                  f"{score_r:>8.2f} "
+                  f"{score_t:>7.1%} "
+                  f"{hold_ret:>7.1%}  {flag}")
+
+            if decile_r == 1:
+                d1_returns.append(hold_ret)
+            else:
+                d10_returns.append(hold_ret)
+
+        if d1_returns:
+            d1_arr = [r for r in d1_returns if not np.isnan(r)]
+            print(f"\n  D1 months: {len(d1_arr)}, "
+                  f"avg hold return: {np.mean(d1_arr):.2%}, "
+                  f"total contrib: {np.sum(d1_arr):.2%}")
+        if d10_returns:
+            d10_arr = [r for r in d10_returns if not np.isnan(r)]
+            print(f"  D10 months: {len(d10_arr)}, "
+                  f"avg hold return: {np.mean(d10_arr):.2%}, "
+                  f"total contrib: {np.sum(d10_arr):.2%}")
+
+
+def print_worst_months(sig_total, monthly_ret, n=10):
+    """Print worst months for total return momentum hedge portfolio."""
+    assignments_t = form_decile_assignments(sig_total, n_quantiles=10)
+    month_details = []
+
+    for t in range(len(monthly_ret)):
+        if t not in assignments_t:
+            continue
+        date = monthly_ret.index[t]
+        fwd = monthly_ret.iloc[t]
+        ranks = assignments_t[t]
+
+        d1_ret = fwd[ranks[ranks == 1].index.intersection(fwd.dropna().index)]
+        d10_ret = fwd[ranks[ranks == 10].index.intersection(fwd.dropna().index)]
+
+        hedge = d10_ret.mean() - d1_ret.mean()
+        month_details.append({
+            "date": date, "hedge": hedge,
+            "d1_mean": d1_ret.mean(), "d10_mean": d10_ret.mean(),
+            "d1_top3": d1_ret.nlargest(3),
+            "d1_count": len(d1_ret),
+        })
+
+    md = sorted(month_details, key=lambda x: x["hedge"])
+    for m in md[:n]:
+        print(f"\n  {m['date'].strftime('%Y-%m')}  "
+              f"Hedge: {m['hedge']:+.1%}  "
+              f"D10 avg: {m['d10_mean']:+.1%}  "
+              f"D1 avg: {m['d1_mean']:+.1%}  "
+              f"D1 stocks: {m['d1_count']}")
+        print(f"    D1 top 3 gainers:")
+        for tk, ret in m["d1_top3"].items():
+            print(f"      {tk:<8s} {ret:+.1%}")
+
+
 # ── MAIN ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -488,14 +674,12 @@ if __name__ == "__main__":
     excess_ret, ff3, monthly_ret = prepare_data()
 
     # ── Phase 2+3: Signals ──
-    print("\n── Phase 2+3: Rolling FF3 Regressions + Signal Construction ──")
-    sig_resid = compute_residual_momentum_signals(
-        excess_ret, ff3, window=36)
+    print("\n── Phase 2+3: Signals ──")
+    sig_resid = compute_residual_momentum_signals(excess_ret, ff3, window=36)
     sig_total_raw = compute_total_return_momentum(monthly_ret)
 
-    # Price filter: exclude stocks below $5 in any given month.
-    # Paper excludes <$1; we use $5 given shorter sample and
-    # post-2015 price levels.
+    # Price filter: exclude stocks below $5 (paper uses <$1;
+    # adjusted for post-2015 price levels).
     monthly_price = pd.read_csv(
         "data/close_prices.csv", index_col=0, parse_dates=True
     ).resample("ME").last()
@@ -507,14 +691,13 @@ if __name__ == "__main__":
     n_excluded = (~price_ok).sum().sum()
     print(f"\n  Price filter (<$5): excluded {n_excluded} stock-months")
 
-    # Match stock pool: only use stocks where BOTH signals exist
+    # Match stock pool
     sig_total = sig_total_raw.where(sig_resid.notna())
-    print(f"\n  Stock-month alignment:")
-    print(f"    Total (raw):     {sig_total_raw.notna().sum().sum()}")
+    print(f"  Stock-month alignment:")
     print(f"    Total (matched): {sig_total.notna().sum().sum()}")
     print(f"    Residual:        {sig_resid.notna().sum().sum()}")
 
-    # ── Phase 4: Holding period comparison (K=1, 3, 6) ──
+    # ── Phase 4: Holding period comparison ──
     print("\n── Phase 4: Holding Period Comparison ──")
 
     for K in [1, 3, 6]:
@@ -527,7 +710,6 @@ if __name__ == "__main__":
         dec_resid, hedge_resid = build_decile_portfolios(
             sig_resid, monthly_ret, K=K)
 
-        # Align to same time period
         common_dates = hedge_total.dropna().index.intersection(
             hedge_resid.dropna().index)
         hedge_total_a = hedge_total.loc[common_dates]
@@ -537,7 +719,6 @@ if __name__ == "__main__":
         stats_r = compute_strategy_stats(hedge_resid_a)
         print_comparison(stats_t, stats_r, label=f"  (K={K})")
 
-        # Save plots for each K
         save_dir = f"results/residual_momentum/K{K}"
         plot_comparison(hedge_total_a, hedge_resid_a, save_dir=save_dir)
         plot_decile_returns(
@@ -560,145 +741,32 @@ if __name__ == "__main__":
         hedge_resid_k1, ff3, monthly_ret)
     print_regression_results(model_resid, "Residual Momentum")
 
-    print("\n✓ Done. Check results/residual_momentum/K{1,3,6}/ for plots.")
+    # ── Phase 6: Crisis case study (Paper Figure 3) ──
+    print("\n── Phase 6: Crisis Case Study (Paper Figure 3) ──")
+    plot_crisis_months(hedge_total_k1, hedge_resid_k1, ff3,
+                       years=[2020, 2022])
 
+    for year in [2020, 2022]:
+        months = pd.date_range(f"{year}-01-31", f"{year}-12-31", freq="ME")
+        rmrf = ff3["Mkt-RF"].reindex(months)
+        total = hedge_total_k1.reindex(months)
+        resid = hedge_resid_k1.reindex(months)
+        print(f"\n  {year} monthly returns:")
+        print(f"  {'Month':<6s} {'RMRF':>8s} {'Total':>8s} {'Resid':>8s}")
+        print(f"  {'─' * 32}")
+        for m in months:
+            print(f"  {m.strftime('%b'):<6s} {rmrf[m]:>7.1%} "
+                  f"{total[m]:>7.1%} {resid[m]:>7.1%}")
 
-    print("\n✓ Done. Check results/residual_momentum/ for plots.")
+    print("\n✓ Done.")
 
-# ── Diagnostic: who's in D1 and D10? ──
-    print("\n── Diagnostic: D1/D10 Composition ──")
-
-    for name, sig in [("Total Return Mom", sig_total),
-                      ("Residual Mom", sig_resid)]:
-        assignments = form_decile_assignments(sig, n_quantiles=10)
-
-        d1_counts = pd.Series(dtype=int)
-        d10_counts = pd.Series(dtype=int)
-
-        for idx, ranks in assignments.items():
-            d1_stocks = ranks[ranks == 1].index
-            d10_stocks = ranks[ranks == 10].index
-            d1_counts = d1_counts.add(
-                pd.Series(1, index=d1_stocks), fill_value=0)
-            d10_counts = d10_counts.add(
-                pd.Series(1, index=d10_stocks), fill_value=0)
-
-        n_months = len(assignments)
-        print(f"\n  {name} ({n_months} formation months)")
-        print(f"  D1 (LOSERS) — top 15 most frequent:")
-        for tk, cnt in d1_counts.sort_values(ascending=False).head(15).items():
-            print(f"    {tk:<6s}  {int(cnt):>3d}/{n_months} months "
-                  f"({cnt/n_months:.0%})")
-        print(f"  D10 (WINNERS) — top 15 most frequent:")
-        for tk, cnt in d10_counts.sort_values(ascending=False).head(15).items():
-            print(f"    {tk:<6s}  {int(cnt):>3d}/{n_months} months "
-                  f"({cnt/n_months:.0%})")
-
-# ── Deep dive: single stock forensics ──
-    print("\n── Stock Forensics ──")
-
-    for ticker in ["NVDA", "ENPH", "CCL", "PCAR"]:
-        if ticker not in sig_resid.columns:
-            continue
-
-        assignments_resid = form_decile_assignments(sig_resid, 10)
-        assignments_total = form_decile_assignments(sig_total, 10)
-
-        print(f"\n  {'─' * 60}")
-        print(f"  {ticker}")
-        print(f"  {'─' * 60}")
-        print(f"  {'Date':<10s} {'Decile':>8s} {'Decile':>8s} "
-              f"{'Resid':>8s} {'Total':>8s} {'Next Mo':>8s}")
-        print(f"  {'':10s} {'(resid)':>8s} {'(total)':>8s} "
-              f"{'Score':>8s} {'Score':>8s} {'Return':>8s}")
-        print(f"  {'─' * 60}")
-
-        d1_returns = []
-        d10_returns = []
-
-        for idx in sorted(assignments_resid.keys()):
-            ranks_r = assignments_resid[idx]
-            if ticker not in ranks_r.index:
-                continue
-
-            decile_r = int(ranks_r[ticker])
-            if decile_r not in [1, 10]:
-                continue
-
-            date = sig_resid.index[idx]
-            score_r = sig_resid.iloc[idx].get(ticker, np.nan)
-            score_t = sig_total.iloc[idx].get(ticker, np.nan)
-
-            # Next month return
-            if idx < len(monthly_ret) - 1:
-                next_ret = monthly_ret.iloc[idx].get(ticker, np.nan)
-            else:
-                next_ret = np.nan
-
-            # What decile in total return?
-            decile_t = "—"
-            if idx in assignments_total and ticker in assignments_total[idx].index:
-                decile_t = str(int(assignments_total[idx][ticker]))
-
-            flag = "◀" if decile_r == 1 else "▶"
-            print(f"  {date.strftime('%Y-%m'):<10s} "
-                  f"{'D'+str(decile_r):>8s} "
-                  f"{'D'+decile_t:>8s} "
-                  f"{score_r:>8.2f} "
-                  f"{score_t:>7.1%} "
-                  f"{next_ret:>7.1%}  {flag}")
-
-            if decile_r == 1:
-                d1_returns.append(next_ret)
-            else:
-                d10_returns.append(next_ret)
-
-        if d1_returns:
-            d1_arr = [r for r in d1_returns if not np.isnan(r)]
-            print(f"\n  D1 months: {len(d1_arr)}, "
-                  f"avg next-mo return: {np.mean(d1_arr):.2%}, "
-                  f"total contrib: {np.sum(d1_arr):.2%}")
-        if d10_returns:
-            d10_arr = [r for r in d10_returns if not np.isnan(r)]
-            print(f"  D10 months: {len(d10_arr)}, "
-                  f"avg next-mo return: {np.mean(d10_arr):.2%}, "
-                  f"total contrib: {np.sum(d10_arr):.2%}")
-
-# ── Diagnostic: worst months for total return momentum ──
-    print("\n── Total Return Momentum: Worst 10 Months ──")
-    assignments_t = form_decile_assignments(sig_total, n_quantiles=10)
-
-    month_details = []
-    for t in range(len(monthly_ret)):
-        if t not in assignments_t:
-            continue
-        date = monthly_ret.index[t]
-        fwd = monthly_ret.iloc[t]
-        ranks = assignments_t[t]
-
-        d1_stocks = ranks[ranks == 1].index
-        d10_stocks = ranks[ranks == 10].index
-
-        d1_ret = fwd[d1_stocks.intersection(fwd.dropna().index)]
-        d10_ret = fwd[d10_stocks.intersection(fwd.dropna().index)]
-
-        hedge = d10_ret.mean() - d1_ret.mean()
-        month_details.append({
-            "date": date, "hedge": hedge,
-            "d1_mean": d1_ret.mean(), "d10_mean": d10_ret.mean(),
-            "d1_max": d1_ret.max(), "d1_max_tk": d1_ret.idxmax() if len(d1_ret) > 0 else "",
-            "d1_top3": d1_ret.nlargest(3),
-            "d1_count": len(d1_ret),
-        })
-
-    md = sorted(month_details, key=lambda x: x["hedge"])
-
-    for m in md[:10]:
-        print(f"\n  {m['date'].strftime('%Y-%m')}  "
-              f"Hedge: {m['hedge']:+.1%}  "
-              f"D10 avg: {m['d10_mean']:+.1%}  "
-              f"D1 avg: {m['d1_mean']:+.1%}  "
-              f"D1 stocks: {m['d1_count']}")
-        print(f"    D1 top 3 gainers (short leg killers):")
-        for tk, ret in m["d1_top3"].items():
-            print(f"      {tk:<8s} {ret:+.1%}")
+    # ── Uncomment below for diagnostics ──
+    # print("\n── Diagnostic: D1/D10 Composition ──")
+    # print_d1_d10_composition(sig_total, sig_resid)
+    #
+    # print("\n── Stock Forensics ──")
+    # print_stock_forensics(["NVDA", "ENPH", "CCL", "PCAR"],
+    #                       sig_resid, sig_total, monthly_ret)
+    #
+    # print("\n── Total Return Momentum: Worst 10 Months ──")
+    # print_worst_months(sig_total, monthly_ret)
