@@ -770,3 +770,34 @@ if __name__ == "__main__":
     #
     # print("\n── Total Return Momentum: Worst 10 Months ──")
     # print_worst_months(sig_total, monthly_ret)
+
+# ── Phase 7: Calendar month effects (Paper Table 6) ──
+    print("\n── Phase 7: Calendar Month Effects (Paper Table 6) ──")
+
+    print(f"\n  {'':6s} {'Total Return Mom':>20s} {'Residual Mom':>20s}")
+    print(f"  {'Month':<6s} {'Mean':>8s} {'t-stat':>10s} "
+          f"{'Mean':>8s} {'t-stat':>10s}")
+    print(f"  {'─' * 46}")
+
+    jan_dec = {}
+    for month in range(1, 13):
+        rt = hedge_total_k1[hedge_total_k1.index.month == month]
+        rr = hedge_resid_k1[hedge_resid_k1.index.month == month]
+
+        t_mean = rt.mean()
+        t_tstat = t_mean / rt.std() * np.sqrt(len(rt)) if len(rt) > 1 else 0
+        r_mean = rr.mean()
+        r_tstat = r_mean / rr.std() * np.sqrt(len(rr)) if len(rr) > 1 else 0
+
+        month_name = pd.Timestamp(2020, month, 1).strftime("%b")
+        print(f"  {month_name:<6s} {t_mean*100:>7.2f}% {t_tstat:>9.2f} "
+              f"{r_mean*100:>7.2f}% {r_tstat:>9.2f}")
+
+        if month in [1, 12]:
+            jan_dec[month] = (t_mean, t_tstat, r_mean, r_tstat)
+
+    print(f"\n  January / December diagnostic (paper Section 4.5):")
+    print(f"    Total mom  Jan: {jan_dec[1][0]*100:>7.2f}% (t={jan_dec[1][1]:>.2f})"
+          f"    Dec: {jan_dec[12][0]*100:>7.2f}% (t={jan_dec[12][1]:>.2f})")
+    print(f"    Resid mom  Jan: {jan_dec[1][2]*100:>7.2f}% (t={jan_dec[1][3]:>.2f})"
+          f"    Dec: {jan_dec[12][2]*100:>7.2f}% (t={jan_dec[12][3]:>.2f})")
