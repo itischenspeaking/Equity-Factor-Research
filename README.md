@@ -36,17 +36,9 @@ The full analysis is discussed in the residual momentum report.
 
 Coming soon. This will be the structured research note covering the paper motivation, methodology, portfolio results, conditional Fama-French attribution, crisis-month case study, calendar-month effects, IC analysis, limitations, and interpretation.
 
-The core research pipeline lives in
-[`factors/residual_momentum.py`](factors/residual_momentum.py)
-— rolling FF3 regressions, signal construction, decile portfolios,
-conditional attribution, crisis case study, and diagnostics.
-Charts and data for all holding periods are in
-[`results/residual_momentum/`](results/residual_momentum/).
-
 ### Residual Momentum Code
 
-Main implementation of the residual momentum research pipeline.  
-[![View Code](https://img.shields.io/badge/View_Code-factors/residual__momentum.py-blue?style=flat-square)](factors/residual_momentum.py)
+Main implementation of the residual momentum [research pipeline](factors/residual_momentum.py).
 
 ### Research Log
 
@@ -57,8 +49,7 @@ Chronological notes from the development process. These include exploratory work
 
 ### Results
 
-Generated charts and outputs, including cumulative returns, drawdowns, decile returns, and crisis-month visualisations.  
-[View results](results/residual_momentum/)
+Generated [charts and outputs](results/residual_momentum/), including cumulative returns, drawdowns, decile returns, and crisis-month visualisations.
 
 ## Quick Start
 
