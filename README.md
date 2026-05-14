@@ -1,9 +1,60 @@
 # Equity Factor Research
 
-Equity factor research and statistical arbitrage from scratch in
-Python. This project implements classic cross-sectional factors and
-a basket stat arb strategy, backtests them on S&P 1500 stocks
-(2015–2024), and documents findings in a weekly research log.
+A Python research repository for learning and implementing equity alpha research workflows.
+
+The main case study is a replication and stress test of the residual momentum framework from Blitz, Huij and Martens. The project compares conventional total-return momentum with residual momentum using rolling Fama-French regressions, cross-sectional portfolio construction, factor attribution, crisis-period diagnostics, calendar-month effects, and IC analysis.
+
+This repository is intended as a research and learning project, not as a production trading system.
+
+## Current Project: Residual Momentum
+
+Traditional momentum ranks stocks by their past total returns. Residual momentum instead ranks stocks by the part of past returns that cannot be explained by common Fama-French factors such as market, size, and value.
+
+The project implements the following workflow:
+
+1. Convert daily equity prices into monthly returns.
+2. Estimate rolling 36-month Fama-French regressions for each stock.
+3. Extract residual returns.
+4. Construct 12-1M total-return and residual momentum signals.
+5. Sort stocks into decile portfolios.
+6. Compare top-minus-bottom long-short portfolios.
+7. Analyse performance, drawdowns, factor exposure, crisis-month behaviour, calendar-month effects, and cross-sectional IC.
+
+## Key Findings
+
+- Residual momentum materially reduced risk relative to total-return momentum in this sample. Across K=1, K=3, and K=6 holding periods, residual momentum had roughly half the volatility of total-return momentum and smaller drawdowns.
+
+- Conditional Fama-French attribution supports the paper’s core mechanism: total-return momentum had substantial dynamic factor exposure, while residual momentum largely removed it.
+
+- The return prediction evidence is more mixed. Residual momentum improved risk-adjusted performance, but its standalone cross-sectional IC and alpha were weak and statistically insignificant in this short modern sample.
+
+The full analysis is discussed in the residual momentum report.
+
+## Research Outputs
+
+### Residual Momentum Report
+
+`results/reports/residual_momentum_report.md`
+
+A structured research note covering the paper motivation, methodology, portfolio results, conditional Fama-French attribution, crisis-month case study, calendar-month effects, IC analysis, limitations, and interpretation.
+
+### Residual Momentum Code
+
+`factors/residual_momentum.py`
+
+Main implementation of the residual momentum research pipeline.
+
+### Research Log
+
+TBC
+
+Chronological notes from the development process. These include exploratory work, debugging notes, abandoned ideas, and intermediate results. The logs are kept as a research diary rather than polished strategy claims.
+
+### Results
+
+`results/residual_momentum/`
+
+Generated charts and outputs, including cumulative returns, drawdowns, decile returns, and crisis-month visualisations.
 
 ## Quick Start
 
@@ -52,67 +103,3 @@ a basket stat arb strategy, backtests them on S&P 1500 stocks
         ├── week_01.md                # Week 1: setup, factors, pairs, post-pairs
         └── week_02.md                # Week 2: FF attribution, residual momentum
 
-## Research Log
-
-- [Week 1](research_log/week_01.md) — Project setup, three
-  cross-sectional factors, classical pairs trading, basket stat arb
-  (post-pairs), and the sector homogeneity finding
-- [Week 2](research_log/week_02.md) — FF6 factor attribution,
-  rolling validation, IC analysis, residual momentum replication,
-  stock forensics, universe expansion to S&P 1500
-
-## Key Findings
-
-1. **Universe determines whether a factor works.** Replicating
-   Blitz et al. (2011) residual momentum, we confirmed the
-   paper's risk-reduction mechanism (vol halved, dynamic factor
-   R² from 0.39 to 0.08, max drawdown from -52% to -20%) on
-   S&P 1500. Stock forensics revealed that S&P 500 "losers"
-   are temporarily distressed large-caps that reliably recover,
-   making the short leg unprofitable. Expanding to S&P 1500
-   improved residual momentum Sharpe from 0.20 to 0.35 (K=3).
-   NVDA spent 17 months in residual D1 while in total return
-   D10, demonstrating its returns were factor exposure, not
-   firm-specific momentum.
-
-2. **Basket stat arb** only works in sectors where no single
-   stock can structurally decouple from its peers. Consumer
-   staples delivered Sharpe 0.56; semiconductors lost 75%
-   because NVDA permanently diverged.
-
-3. **IC-to-PnL gap**: a factor can have statistically significant
-   predictive power (IC = 0.105, t = 3.76) while the trading
-   strategy built on it loses money (-17%). The signal is right
-   but the execution layer fails to convert.
-
-## What's Implemented
-
-**Cross-Sectional Factors**: momentum (12-1), mean reversion (5d),
-low volatility (63d). Backtested as decile long-short portfolios
-with monthly rebalance and 10 bps transaction cost.
-
-**Classical Pairs Trading**: Engle-Granger cointegration screening,
-z-score signal generation, out-of-sample backtest on 4 pairs.
-
-**Post-Pairs (Basket Stat Arb)**: extension of pairs trading from
-2 to 5 same-sector stocks.
-
-**Residual Momentum**: replication of Blitz, Huij & Martens (2011).
-Rolling 36-month FF3 regressions, standardised 12-1M residual
-ranking. Compared to total return momentum with matched stock
-pools, K=1/3/6 overlapping holding periods, conditional FF
-attribution, and stock-level forensics.
-
-**Factor Attribution**: FF5 + Momentum (6-factor) regression on
-all strategy returns.
-
-## Data
-
-- **Universe**: 1469 S&P 1500 constituents (497 SP500 + 390
-  SP400 + 582 SP600)
-- **Period**: 2015–2024 daily data
-- **Source**: Yahoo Finance via yfinance
-- **Filters**: price < $5 excluded; |monthly return| > 300%
-  excluded (yfinance corporate action errors)
-- Data files are gitignored — run `download_data.py` to regenerate
-- Use `--sp500` flag for legacy S&P 500 only universe
