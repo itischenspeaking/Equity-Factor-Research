@@ -2,7 +2,7 @@
 
 A Python research repository for learning and implementing equity alpha research workflows.
 
-The main case study is a replication and stress test of the residual momentum framework from Blitz, Huij and Martens. The project compares conventional total-return momentum with residual momentum using rolling Fama-French regressions, cross-sectional portfolio construction, factor attribution, crisis-period diagnostics, calendar-month effects, and IC analysis.
+The main case study replicates and stress-tests the residual momentum framework introduced in *Residual Momentum* (Blitz, Huij, and Martens, 2011). The project compares conventional total-return momentum with residual momentum using rolling Fama-French regressions, cross-sectional portfolio construction, factor attribution, crisis-period diagnostics, calendar-month effects, and IC analysis.
 
 This repository is intended as a research and learning project, not as a production trading system.
 
@@ -32,15 +32,11 @@ The full analysis is discussed in the residual momentum report.
 
 ## Research Outputs
 
-### Residual Momentum Report
-
-`results/reports/residual_momentum_report.md`
+### Residual Momentum Report — coming soon
 
 A structured research note covering the paper motivation, methodology, portfolio results, conditional Fama-French attribution, crisis-month case study, calendar-month effects, IC analysis, limitations, and interpretation.
 
-### Residual Momentum Code
-
-`factors/residual_momentum.py`
+### [Residual Momentum Code](factors/residual_momentum.py)
 
 Main implementation of the residual momentum research pipeline.
 
@@ -52,9 +48,7 @@ Main implementation of the residual momentum research pipeline.
 
 Chronological notes from the development process. These include exploratory work, debugging notes, abandoned ideas, and intermediate results. The logs are kept as a research diary rather than polished strategy claims.
 
-### Results
-
-`results/residual_momentum/`
+### [Results](results/residual_momentum/)
 
 Generated charts and outputs, including cumulative returns, drawdowns, decile returns, and crisis-month visualisations.
 
