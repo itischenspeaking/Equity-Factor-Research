@@ -852,3 +852,52 @@ if __name__ == "__main__":
                   f"{model_h.params['SMB']:>8.2f} "
                   f"{model_h.params['HML']:>8.2f} "
                   f"{model_h.rsquared:>5.2f}")
+# ── Phase 9: Information Coefficient (cross-sectional) ──
+    print("\n── Phase 9: Cross-Sectional IC Analysis ──")
+    from scipy.stats import spearmanr
+
+    ic_total, ic_resid = [], []
+    ic_dates = []
+
+    for i in range(len(sig_total) - 1):
+        st = sig_total.iloc[i].dropna()
+        sr = sig_resid.iloc[i].dropna()
+        fwd = monthly_ret.iloc[i]
+
+        # Total return momentum IC
+        common_t = st.index.intersection(fwd.dropna().index)
+        if len(common_t) >= 30:
+            rho_t, _ = spearmanr(st[common_t], fwd[common_t])
+            ic_total.append(rho_t)
+        else:
+            ic_total.append(np.nan)
+
+        # Residual momentum IC
+        common_r = sr.index.intersection(fwd.dropna().index)
+        if len(common_r) >= 30:
+            rho_r, _ = spearmanr(sr[common_r], fwd[common_r])
+            ic_resid.append(rho_r)
+        else:
+            ic_resid.append(np.nan)
+
+        ic_dates.append(sig_total.index[i])
+
+    ic_t = pd.Series(ic_total, index=ic_dates).dropna()
+    ic_r = pd.Series(ic_resid, index=ic_dates).dropna()
+
+    # Align
+    common_ic = ic_t.index.intersection(ic_r.index)
+    ic_t = ic_t.loc[common_ic]
+    ic_r = ic_r.loc[common_ic]
+
+    def ic_stats(ic, name):
+        print(f"\n  {name}:")
+        print(f"    IC mean:    {ic.mean():>8.4f}")
+        print(f"    IC std:     {ic.std():>8.4f}")
+        print(f"    IC_IR:      {ic.mean() / ic.std():>8.4f}")
+        print(f"    Hit rate:   {(ic > 0).mean():>7.1%}")
+        print(f"    t-stat:     {ic.mean() / ic.std() * np.sqrt(len(ic)):>8.2f}")
+        print(f"    N months:   {len(ic)}")
+
+    ic_stats(ic_t, "Total Return Momentum")
+    ic_stats(ic_r, "Residual Momentum")
