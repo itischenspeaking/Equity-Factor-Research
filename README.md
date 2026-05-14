@@ -32,18 +32,11 @@ The full analysis is discussed in the residual momentum report.
 
 ## Research Outputs
  
-> **Residual Momentum Report** — Coming soon.  
-> Structured research note covering paper motivation, methodology, portfolio results,
-> conditional Fama-French attribution, crisis-month case study, calendar-month effects,
-> IC analysis, limitations, and interpretation.
- 
-<table>
-<tr>
-<td width="50%" valign="top">
-
 ### Residual Momentum Report
 
 Coming soon. This will be the structured research note covering the paper motivation, methodology, portfolio results, conditional Fama-French attribution, crisis-month case study, calendar-month effects, IC analysis, limitations, and interpretation.
+
+[![View Code](https://img.shields.io/badge/View_Code-factors/residual__momentum.py-blue?style=flat-square)](factors/residual_momentum.py)
 
 ### Residual Momentum Code
 
