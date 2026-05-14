@@ -31,6 +31,15 @@ The project implements the following workflow:
 The full analysis is discussed in the residual momentum report.
 
 ## Research Outputs
+ 
+> **Residual Momentum Report** — Coming soon.  
+> Structured research note covering paper motivation, methodology, portfolio results,
+> conditional Fama-French attribution, crisis-month case study, calendar-month effects,
+> IC analysis, limitations, and interpretation.
+ 
+<table>
+<tr>
+<td width="50%" valign="top">
 
 ### Residual Momentum Report
 
