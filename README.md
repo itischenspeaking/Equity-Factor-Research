@@ -46,7 +46,8 @@ Main implementation of the residual momentum research pipeline.
 
 ### Research Log
 
-TBC
+[Week 1](research_log/week_01.md)
+[Week 2](research_log/week_02.md)
 
 Chronological notes from the development process. These include exploratory work, debugging notes, abandoned ideas, and intermediate results. The logs are kept as a research diary rather than polished strategy claims.
 
