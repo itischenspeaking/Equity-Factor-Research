@@ -32,25 +32,26 @@ The full analysis is discussed in the residual momentum report.
 
 ## Research Outputs
 
-### Residual Momentum Report — coming soon
+### Residual Momentum Report
 
-A structured research note covering the paper motivation, methodology, portfolio results, conditional Fama-French attribution, crisis-month case study, calendar-month effects, IC analysis, limitations, and interpretation.
+Coming soon. This will be the structured research note covering the paper motivation, methodology, portfolio results, conditional Fama-French attribution, crisis-month case study, calendar-month effects, IC analysis, limitations, and interpretation.
 
-### [Residual Momentum Code](factors/residual_momentum.py)
+### Residual Momentum Code
 
-Main implementation of the residual momentum research pipeline.
+Main implementation of the residual momentum research pipeline.  
+[View code](factors/residual_momentum.py)
 
 ### Research Log
 
-- [Week 1](research_log/week_01.md)
-
-- [Week 2](research_log/week_02.md)
-
 Chronological notes from the development process. These include exploratory work, debugging notes, abandoned ideas, and intermediate results. The logs are kept as a research diary rather than polished strategy claims.
 
-### [Results](results/residual_momentum/)
+- [Week 1](research_log/week_01.md) — exploratory factor construction, basic metrics, and early statistical arbitrage experiments.
+- [Week 2](research_log/week_02.md) — factor attribution, residual momentum development, debugging, and interpretation.
 
-Generated charts and outputs, including cumulative returns, drawdowns, decile returns, and crisis-month visualisations.
+### Results
+
+Generated charts and outputs, including cumulative returns, drawdowns, decile returns, and crisis-month visualisations.  
+[View results](results/residual_momentum/)
 
 ## Quick Start
 
