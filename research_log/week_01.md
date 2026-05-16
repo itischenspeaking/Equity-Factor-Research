@@ -1,305 +1,273 @@
-# Week 1: Project Setup, Factor Backtests, Pairs Trading, Post-Pairs
+# Week 1: Project Setup, Basic Factors, Pairs Trading, and Post-Pairs
 
 **2026-04-28 ---- 2026-05-03**
 
+This was the first week of the project. Most of the work was exploratory: I was trying to get comfortable with the basic mechanics of quant research rather than trying to produce a polished strategy.
+
+The main goals were:
+
+- set up the data and backtest workflow;
+- understand basic performance metrics such as return, Sharpe, drawdown, and turnover;
+- test a few simple cross-sectional factors;
+- move from classical pairs trading to a small basket stat-arb setup;
+- start learning what can go wrong when a signal looks reasonable but is not robust.
+
 ---
 
-## Day 1-2: Project Setup + 3 Basic Factors
+## Day 1-2: Project Setup and Three Basic Factors
 
 ### Data
 
-Downloaded 10 years of daily price data (2015-2024) for S&P 500
-constituents via yfinance. 23 tickers failed (delisted/acquired:
-ATVI, SIVB, FRC, etc.), kept 462.
+Downloaded 10 years of daily price data from 2015 to 2024 for S&P 500 constituents using `yfinance`.
 
-### Factor results (decile long-short, monthly rebalance, 10bps cost)
+A few tickers failed because of delistings, acquisitions, or data availability issues, including names such as ATVI, SIVB, and FRC. The final usable universe contained 462 stocks.
 
-| Factor           | Ann. Return | Sharpe | Max DD  |
-|------------------|-------------|--------|---------|
-| Momentum (12-1)  | -5.98%      | -0.26  | -57.55% |
-| Mean Reversion   | 0.11%       | 0.01   | -39.28% |
-| Low Volatility   | -16.54%     | -0.66  | -88.28% |
+This already exposed an important practical issue: even a simple equity backtest depends heavily on the quality and definition of the universe.
 
-None of the three worked in this period.
+### Factor results
 
-**Momentum**: COVID crash in 2020 caused a massive momentum reversal.
-Past winners collapsed while past losers ripped. Never fully recovered.
+Tested three simple factors using decile long-short portfolios, monthly rebalancing, and 10 bps transaction cost.
 
-**Mean Reversion**: 5-day signal decays within a week, but the
-portfolio rebalances monthly. Signal is stale by trade time. Tried
-weekly rebalance — worse, because turnover (0.68) ate all alpha.
+| Factor | Ann. Return | Sharpe | Max DD |
+|---|---:|---:|---:|
+| Momentum (12-1) | -5.98% | -0.26 | -57.55% |
+| Mean Reversion | 0.11% | 0.01 | -39.28% |
+| Low Volatility | -16.54% | -0.66 | -88.28% |
 
-**Low Volatility**: Short leg loaded with NVDA, TSLA, AMD — the best
-performers of the decade. Would likely work in a risk-off regime
-(2000-2010) but 2015-2024 was the worst possible period for it.
+None of the three simple factors worked well in this sample.
 
-### Universe size matters: 52 vs 462 stocks
+### Interpretation
 
-Initially tested with 52 hand-picked large caps. Momentum had
-+7.26% return and 0.25 Sharpe. Expanding to 462 flipped it negative.
-The larger universe includes more mid-caps that experienced sharper
-momentum reversals around COVID. Mean reversion improved slightly
-(Sharpe -0.28 → 0.01) — more stocks = better diversification.
+**Momentum:**  
+The COVID crash and rebound created a large momentum reversal. Past winners suffered while past losers rebounded, and the strategy never fully recovered.
+
+**Mean Reversion:**  
+The 5-day signal likely decays too quickly for a monthly rebalance. I also tried weekly rebalancing, but turnover became too high and appeared to eat away any potential edge.
+
+**Low Volatility:**  
+The short leg ended up containing names like NVDA, TSLA, and AMD, which were among the strongest performers of the decade. This factor might behave differently in a risk-off regime, but 2015-2024 was a difficult period for this version of the strategy.
+
+### Universe size: 52 vs 462 stocks
+
+Before using the full S&P 500 universe, I had tested a smaller hand-picked universe of 52 large caps. Momentum looked mildly positive there, with +7.26% annual return and a 0.25 Sharpe.
+
+After expanding to 462 stocks, momentum flipped negative.
+
+This was a useful early lesson: a small hand-picked universe can give a misleading impression. Expanding the universe changes both the opportunity set and the failure modes.
+
+Mean reversion improved slightly with the larger universe, which makes sense because more stocks can provide better diversification. But the improvement was still not enough to make the signal attractive.
 
 ---
 
 ## Day 3: Classical Pairs Trading
 
-Screened all within-sector pairs for cointegration (Engle-Granger).
+Screened within-sector stock pairs for cointegration using the Engle-Granger test.
 
-Strict filter (corr > 0.7, p < 0.05): 2 pairs.
-Relaxed filter (corr > 0.6, p < 0.10): 4 pairs.
+A strict filter produced only 2 pairs. A relaxed filter produced 4 pairs.
 
-| Pair     | Corr  | Coint p | Hedge Ratio | Half-life |
-|----------|-------|---------|-------------|-----------|
-| CRM/ADBE | 0.693 | 0.0003  | 0.3739      | 28.5d     |
-| PEP/PG   | 0.729 | 0.0415  | 0.8325      | 41.5d     |
-| KO/PEP   | 0.739 | 0.0240  | 0.2913      | 43.2d     |
-| KO/PG    | 0.616 | 0.0730  | 0.2412      | 52.6d     |
+| Pair | Corr | Coint p | Hedge Ratio | Half-life |
+|---|---:|---:|---:|---:|
+| CRM/ADBE | 0.693 | 0.0003 | 0.3739 | 28.5d |
+| PEP/PG | 0.729 | 0.0415 | 0.8325 | 41.5d |
+| KO/PEP | 0.739 | 0.0240 | 0.2913 | 43.2d |
+| KO/PG | 0.616 | 0.0730 | 0.2412 | 52.6d |
 
-Out-of-sample backtest (last 30% of data, ~3 years):
+Out-of-sample backtest on the last 30% of the data:
 
-| Pair     | Ann. Return | Sharpe | Max DD  | Trades |
-|----------|-------------|--------|---------|--------|
-| CRM/ADBE | -2.54%      | -0.15  | -29.12% | 12     |
-| PEP/PG   | -2.41%      | -0.48  | -8.14%  | 7      |
-| KO/PEP   | -2.53%      | -0.43  | -11.91% | 9      |
-| KO/PG    | -0.76%      | -0.11  | -17.00% | 17     |
+| Pair | Ann. Return | Sharpe | Max DD | Trades |
+|---|---:|---:|---:|---:|
+| CRM/ADBE | -2.54% | -0.15 | -29.12% | 12 |
+| PEP/PG | -2.41% | -0.48 | -8.14% | 7 |
+| KO/PEP | -2.53% | -0.43 | -11.91% | 9 |
+| KO/PG | -0.76% | -0.11 | -17.00% | 17 |
 
-All mildly negative. The fundamental problem: only 4 tradeable
-pairs, zero diversification. One structural break (CRM diverging
-from ADBE in 2024H2) wipes out months of gains. Two stocks is
-too few to form a robust "fair value" estimate.
+All results were mildly negative.
+
+The biggest issue was not just that the returns were negative, but that there were too few tradable pairs. With only a handful of pairs, there is almost no diversification. A single structural break can dominate the whole result.
+
+This made the classical two-stock pairs setup feel too fragile for the type of research project I wanted to build.
 
 ---
 
-## Day 3: Post-Pairs v1 (Basket Stat Arb)
+## Day 3: Post-Pairs v1 — Basket Stat Arb
 
 ### Motivation
 
-Extended pairs from 2 to 5 same-sector stocks. Instead of comparing
-one stock to one partner, compare each stock to the equal-weighted
-average of its 4 closest peers.
+After seeing that two-stock pairs were too fragile, I extended the idea from pairs to small baskets.
 
-Why 5: 2 is classical pairs, too fragile. 20+ requires fitting
-weight coefficients, almost certain overfitting. 5 is the sweet
-spot — enough peers for a stable reference, few enough for equal
-weights with zero free parameters.
+Instead of comparing one stock to one other stock, each stock is compared to the equal-weighted average of four close peers in the same sector.
+
+Why 5 stocks?
+
+- 2 stocks is classical pairs trading, but too fragile.
+- 20+ stocks would require fitting weights, which introduces more room for overfitting.
+- 5 stocks felt like a reasonable middle ground: enough peers to make the reference value more stable, but simple enough to avoid too many fitted parameters.
 
 ### v1 implementation
 
-Equal weights, z-score entry at ±2.0, exit at ±0.5. Dollar-neutral
-by construction. No parameter fitting, no filtering.
+- Equal-weighted peer basket
+- Z-score entry at ±2.0
+- Exit at ±0.5
+- Dollar-neutral construction
+- No parameter fitting
+- No additional filtering
 
 ### v1 results
 
-| Basket           | Ann. Return | Sharpe | Max DD  | Trades |
-|------------------|-------------|--------|---------|--------|
-| Consumer Staples | 6.04%       | 0.56   | -10.90% | 67     |
-| Energy           | 1.34%       | 0.10   | -19.01% | 64     |
-| Banks            | 0.31%       | 0.02   | -15.71% | 68     |
-| Tech Software    | -6.74%      | -0.29  | -51.27% | 67     |
-| Pharma           | -14.59%     | -0.73  | -50.91% | 58     |
-| Semis            | -35.59%     | -1.10  | -75.06% | 57     |
+| Basket | Ann. Return | Sharpe | Max DD | Trades |
+|---|---:|---:|---:|---:|
+| Consumer Staples | 6.04% | 0.56 | -10.90% | 67 |
+| Energy | 1.34% | 0.10 | -19.01% | 64 |
+| Banks | 0.31% | 0.02 | -15.71% | 68 |
+| Tech Software | -6.74% | -0.29 | -51.27% | 67 |
+| Pharma | -14.59% | -0.73 | -50.91% | 58 |
+| Semis | -35.59% | -1.10 | -75.06% | 57 |
 
-### Key finding: sector homogeneity determines everything
+### Interpretation
 
-Only Consumer Staples worked. The pattern is clear: **the strategy
-only works when no single stock can structurally decouple from its
-peers.**
+Consumer Staples was the only basket that worked in this exploratory test.
 
-KO, PEP, PG, CL, KHC sell near-identical products into
-near-identical markets. There is no plausible scenario where KO
-10x's while PEP doesn't. Deviations are noise, and they revert.
+A plausible explanation is that the strategy works better when the stocks are economically similar and less likely to structurally decouple from one another.
 
-Every failed basket had one stock that broke away permanently:
-NVDA (AI), LLY (GLP-1 drugs), ORCL (cloud pivot). The strategy
-shorted the breakout stock and got destroyed.
+KO, PEP, PG, CL, and KHC sell relatively similar products into relatively similar markets. Large deviations between them are more likely to be temporary noise.
+
+The failed baskets tended to contain stocks that could break away from their peers for real business reasons:
+
+- NVDA during the AI boom;
+- LLY during the GLP-1 drug repricing;
+- ORCL during its cloud pivot.
+
+In those cases, the strategy shorted structural winners and got hurt.
+
+I do not want to overstate this as a general finding. It is only one small exploratory test. But it gave me a useful intuition: mean-reversion strategies need not only statistical similarity, but also economic similarity.
 
 ### The Berkshire Hathaway connection
 
-Chen & Yang (2021) used basket replication to replicate Berkshire
-Hathaway's returns via stat arb (PLoS ONE 16(1): e0244541).
-Buffett concentrates in consumer-facing businesses he considers
-predictable — exactly where my strategy works.
+I also noticed a connection with the Berkshire/stat-arb and quality literature.
 
-Frazzini, Kabiller & Pedersen (2018) "Buffett's Alpha" (Financial
-Analysts Journal) found that Berkshire's alpha is explained by
-quality and low-volatility factors. These are the same
-characteristics that make consumer staples the only viable sector
-for basket mean reversion. This connection seems worth investigating
-further.
+Chen and Yang (2021) use basket replication to study Berkshire Hathaway through a statistical arbitrage lens. Frazzini, Kabiller, and Pedersen (2018) argue that Berkshire's returns can largely be explained by quality, low-risk, and leverage.
+
+Consumer staples are also the sector where my simple basket strategy behaved best.
+
+This may or may not be meaningful, but it gave me a useful research question: can a measure of sector homogeneity or quality help identify where basket mean reversion is more likely to work?
+
+This is interesting, but I should not get carried away. The point is to build fundamentals first, not to outsmart Buffett in my second week :).
 
 ---
 
-## Day 4: Post-Pairs v2 (OU Filtering)
+## Day 4: Post-Pairs v2 — OU Filtering
 
 ### Motivation
 
-v1's core problem: it trades every z-score deviation, whether the
-deviation is noise (will revert) or structural (will not revert).
-Need a way to distinguish the two.
+The main weakness of v1 was that it traded every large z-score deviation, whether the deviation was temporary or structural.
 
-Read Avellaneda & Lee (2010) "Statistical Arbitrage in the US
-Equities Market" (Quantitative Finance, 10(7), 761-782). Their key
-insight: model the residual (stock vs sector) as an
-Ornstein-Uhlenbeck process, estimate mean-reversion speed κ on a
-rolling 60-day window, and only trade stocks with fast enough
-reversion.
+I read Avellaneda and Lee (2010), which models residuals as Ornstein-Uhlenbeck processes and uses mean-reversion speed to decide which signals are more tradable.
 
-### Three filters added in v2
+The idea was to add filters that might avoid trading structural decouplings.
 
-**Filter 1 — OU mean-reversion speed (κ)**: For each stock on each
-day, estimate OU parameters on the trailing 60-day spread. Only
-trade if κ > 252/30 (half-life < 30 days). Stocks that are
-structurally decoupling will have low κ.
+### Filters added in v2
 
-**Filter 2 — ADF stationarity test**: Before trading, verify that
-the residual is stationary (ADF p-value < 0.10). Non-stationary
-residuals indicate broken cointegration.
+**Filter 1 — OU mean-reversion speed**
 
-**Filter 3 — Rolling re-estimation**: All parameters are
-re-estimated daily on a 60-day rolling window. If a stock starts
-decoupling, κ drops within weeks and the strategy automatically
-stops trading it.
+For each stock on each day, estimate OU parameters on a trailing 60-day spread. Only trade if the estimated mean-reversion speed implies a half-life below 30 days.
 
-### Signal change: s-score replaces z-score
+**Filter 2 — ADF stationarity test**
 
-Following Avellaneda & Lee, replaced the rolling z-score with an
-OU-derived "s-score":
+Only trade if the residual passes an ADF stationarity check.
 
-    s = (X(t) - μ) / σ_eq
+**Filter 3 — Rolling re-estimation**
 
-where μ and σ_eq come from the OU parameter estimation. Entry at
-s = ±1.25 (Avellaneda's calibrated threshold), exit at ±0.5.
+Re-estimate parameters daily using a 60-day rolling window, so that if a stock starts decoupling, it should eventually stop passing the filters.
+
+### Signal change
+
+Following Avellaneda and Lee, replaced the rolling z-score with an OU-derived s-score:
+
+```text
+s = (X(t) - μ) / σ_eq
+```
+
+where `μ` and `σ_eq` come from the OU parameter estimation.
+
+Entry threshold: ±1.25  
+Exit threshold: ±0.5
 
 ### v2 results
 
-| Basket           | Ann. Return | Sharpe | Max DD  | Days Active |
-|------------------|-------------|--------|---------|-------------|
-| Consumer Staples | -1.85%      | -0.68  | -8.89%  | 22%         |
-| Semis            | -3.37%      | -0.51  | -13.60% | 14%         |
-| Pharma           | -4.47%      | -1.02  | -15.41% | 18%         |
-| Energy           | -5.49%      | -1.28  | -18.54% | 23%         |
-| Banks            | -6.18%      | -1.88  | -18.14% | 24%         |
-| Tech Software    | -7.86%      | -1.42  | -21.73% | 15%         |
+| Basket | Ann. Return | Sharpe | Max DD | Days Active |
+|---|---:|---:|---:|---:|
+| Consumer Staples | -1.85% | -0.68 | -8.89% | 22% |
+| Semis | -3.37% | -0.51 | -13.60% | 14% |
+| Pharma | -4.47% | -1.02 | -15.41% | 18% |
+| Energy | -5.49% | -1.28 | -18.54% | 23% |
+| Banks | -6.18% | -1.88 | -18.14% | 24% |
+| Tech Software | -7.86% | -1.42 | -21.73% | 15% |
 
-Filter pass rates were extremely low across all stocks (5-28%).
+Filter pass rates were low across most stocks.
 
 ### v1 vs v2 comparison
 
-| Basket           | v1 Sharpe | v2 Sharpe | v1 Max DD | v2 Max DD |
-|------------------|-----------|-----------|-----------|-----------|
-| Consumer Staples | **0.56**  | -0.68     | -10.90%   | **-8.89%**|
-| Energy           | 0.10      | -1.28     | -19.01%   | **-18.54%**|
-| Banks            | 0.02      | -1.88     | -15.71%   | **-18.14%**|
-| Tech Software    | -0.29     | -1.42     | -51.27%   | **-21.73%**|
-| Pharma           | -0.73     | -1.02     | -50.91%   | **-15.41%**|
-| Semis            | -1.10     | **-0.51** | -75.06%   | **-13.60%**|
+| Basket | v1 Sharpe | v2 Sharpe | v1 Max DD | v2 Max DD |
+|---|---:|---:|---:|---:|
+| Consumer Staples | 0.56 | -0.68 | -10.90% | -8.89% |
+| Energy | 0.10 | -1.28 | -19.01% | -18.54% |
+| Banks | 0.02 | -1.88 | -15.71% | -18.14% |
+| Tech Software | -0.29 | -1.42 | -51.27% | -21.73% |
+| Pharma | -0.73 | -1.02 | -50.91% | -15.41% |
+| Semis | -1.10 | -0.51 | -75.06% | -13.60% |
 
-### Analysis
+### Interpretation
 
-**The filters work as risk management**: Semis max drawdown went from
--75% to -14%. Pharma from -51% to -15%. Tech from -51% to -22%. The
-filters successfully prevented the catastrophic losses from shorting
-structurally decoupled stocks.
+The filters helped reduce some of the largest drawdowns. For example:
 
-**But the filters killed Consumer Staples**: The only profitable
-basket went from Sharpe +0.56 to -0.68. The problem: ADF test with
-a 60-day window is too strict for low-volatility consumer staples
-spreads. These stocks have tiny spread fluctuations, making it hard
-for ADF to reject the unit root null in a short window. Stocks only
-pass filters 7-28% of the time, so the strategy is mostly sitting
-in cash.
+- Semis max drawdown improved from -75% to -14%;
+- Pharma improved from -51% to -15%;
+- Tech improved from -51% to -22%.
 
-**Core trade-off discovered**: Filters are not free. Aggressive
-filtering eliminates the worst losses but also eliminates most
-trading opportunities, including the profitable ones. The filter
-threshold needs to be calibrated per-sector or per-volatility-regime,
-not applied uniformly. The 60-day window may also be too short for
-stable consumer staples — Avellaneda & Lee's original paper used
-this window on a much broader, more volatile universe.
+So the filters did have risk-management value.
+
+But they also removed too many trading opportunities. The only basket that had positive performance in v1, Consumer Staples, became negative in v2.
+
+A likely issue is that the 60-day ADF test is too strict for low-volatility consumer staples spreads. These spreads may mean-revert slowly and quietly, making it hard to reject a unit-root null in a short window.
+
+The main lesson was that filters are not free. Aggressive filtering can remove the worst trades, but it can also remove the profitable ones.
 
 ### Lessons learned
 
-1. Risk management and alpha generation are in tension. v1 had
-   alpha in one sector but catastrophic risk in others. v2 has no
-   catastrophic risk but also no alpha. The goal for v3 is to find
-   the middle ground.
+1. Risk management and alpha generation are in tension.  
+   v1 had positive results in one sector but large risk elsewhere. v2 reduced catastrophic drawdowns but also removed most of the signal.
 
-2. Sector-specific calibration is probably necessary. One set of
-   filter thresholds cannot work across consumer staples (vol ~5%)
-   and semiconductors (vol ~30%). Avellaneda & Lee note that they
-   "modulated the leverage coefficient on a sector-by-sector basis."
+2. Sector-specific calibration may be necessary.  
+   One threshold is unlikely to work equally well for consumer staples and semiconductors.
 
-3. The ADF test may not be the right stationarity test for short
-   windows on low-vol series. Alternatives: KPSS test (tests
-   stationarity as the null), Hurst exponent, or variance ratio
-   tests.
+3. The ADF test may not be ideal for short windows on low-volatility spreads.  
+   I need to understand ADF vs KPSS better before deciding which stationarity test belongs in this framework.
 
 ---
 
 ## TODO for next week
 
-- [ ] Tune v2 filter thresholds per sector (looser for staples,
-      stricter for tech/semis). On second thought, this should wait
-      until I have a stronger theoretical foundation. Without it,
-      tuning thresholds is just overfitting with extra steps.
-- [ ] Try longer estimation window (120d) for consumer staples.
-      Same concern — without solid theory backing the choice, this
-      is just parameter fishing. Suspending for now.
-- [ ] **Do some background reading on ADF vs KPSS: understand the
-      conceptual difference (ADF tests for unit root as null, KPSS
-      tests for stationarity as null) before deciding which to use.**
-- [ ] **Investigate per-stock weights (rolling OLS with
-      regularization). This is something I genuinely want to try,
-      even though I expect it to fail on the first attempt. The
-      learning value is high regardless.**
-- [ ] **Re-read Avellaneda & Lee (2010) Section 6 more carefully —
-      trading-time vs calendar-time signals (volume adjustment).
-      This is the core concept I need to internalise.**
-- [ ] Consider using sector ETFs as factors instead of peer average
-      (closer to Avellaneda's ETF approach).
-- [ ] Explore the Buffett/quality connection: can a "sector
-      homogeneity score" predict which baskets will work? Honestly,
-      this should also wait. The idea came from my naive intuition
-      rather than a solid reasoning. My goal is to get
-      comfortable with the fundamentals of quant research, not to
-      outsmart Buffett in my second week :).
-- [ ] **Fama-French factor attribution — three parts:**
-  - [ ] **Part 1 (learning):** Work through the sec-api.io tutorial
-        (https://sec-api.io/resources/fama-french-factor-model).
-        Goal: understand the Fama-French factor model — what the
-        factors are, how to run the regression, how to interpret
-        alpha and factor loadings. This is conceptual foundation.
-  - [ ] **Part 2 (data engineering):** Work through the Coding
-        Finance tutorial
-        (https://www.codingfinance.com/post/2019-07-01-analyze-ff-factor-python/).
-        Goal: learn industry-level data engineering — manually
-        downloading FF data from Kenneth French's website, parsing
-        the raw CSV, handling date formats, aligning with portfolio
-        returns. Useful as a fallback when pandas_datareader breaks.
-  - [ ] **Part 3 (reference only):** Found Tidy Finance with Python
-        (https://www.tidy-finance.org/python/replicating-fama-and-french-factors.html)
-        which replicates the full FF factor construction from CRSP/
-        Compustat raw data. Not planning to do this — way too heavy
-        for current scope — but bookmarking it as a solid reference
-        on FF factor construction principles. Worth revisiting later
-        if I ever need to verify my own factor implementations
-        against the originals.
+- [ ] Tune v2 filter thresholds per sector. On second thought, this should wait until I have a stronger theoretical foundation. Without it, tuning thresholds is just overfitting with extra steps.
+- [ ] Try a longer estimation window, such as 120 days, for consumer staples. Same concern: without solid theory backing the choice, this is just parameter fishing. Suspending for now.
+- [ ] Do background reading on ADF vs KPSS. Goal: understand the conceptual difference before choosing a stationarity test.
+- [ ] Investigate per-stock weights using rolling OLS with regularization. I genuinely want to try this, even if I expect the first attempt to fail. The learning value is high regardless.
+- [ ] Re-read Avellaneda and Lee (2010), especially Section 6 on trading-time vs calendar-time signals and volume adjustment. This feels like the core concept I need to internalise.
+- [ ] Consider using sector ETFs as factors instead of peer averages, which would be closer to Avellaneda and Lee's ETF approach.
+- [ ] Explore whether a sector homogeneity score can predict which baskets work. Honestly, this should wait. The idea came from my naive intuition rather than a solid research design.
+- [ ] Fama-French factor attribution:
+  - [ ] Part 1: work through a basic Fama-French tutorial to understand the factors, regression, alpha, and factor loadings.
+  - [ ] Part 2: learn how to manually download, parse, and align Fama-French data from Kenneth French's website.
+  - [ ] Part 3: bookmark full CRSP/Compustat factor construction references for later. Not doing this now because it is far outside the current scope.
 
-## Reading list
+---
 
-- [x] Gatev, Goetzmann & Rouwenhorst (2006) "Pairs Trading" — RFS
-- [x] Engle & Granger (1987) "Co-integration and Error Correction"
-      — Econometrica (skimmed)
-- [ ] Krauss (2017) "Statistical Arbitrage Pairs Trading Strategies:
-      Review and Outlook" — J. of Economic Surveys
-- [ ] Vidyamurthy (2004) "Pairs Trading" — Wiley Finance
-- [x] Avellaneda & Lee (2010) "Statistical Arbitrage in the US
-      Equities Market" — Quantitative Finance (skimmed, focused on
-      Sections 3-5 on OU estimation and signal generation)
-- [x] Frazzini, Kabiller & Pedersen (2018) "Buffett's Alpha" — FAJ
-- [ ] Asness, Frazzini & Pedersen (2019) "Quality Minus Junk" — RFS
-- [ ] Chen & Yang (2021) "Optimal statistical arbitrage trading of
-      Berkshire Hathaway" — PLoS ONE
+## Reading List
+
+- [x] Gatev, Goetzmann & Rouwenhorst (2006), "Pairs Trading"
+- [x] Engle & Granger (1987), "Co-integration and Error Correction" — skimmed
+- [ ] Krauss (2017), "Statistical Arbitrage Pairs Trading Strategies: Review and Outlook"
+- [ ] Vidyamurthy (2004), "Pairs Trading"
+- [x] Avellaneda & Lee (2010), "Statistical Arbitrage in the US Equities Market" — skimmed, focused on OU estimation and signal generation
+- [x] Frazzini, Kabiller & Pedersen (2018), "Buffett's Alpha"
+- [ ] Asness, Frazzini & Pedersen (2019), "Quality Minus Junk"
+- [ ] Chen & Yang (2021), "Optimal statistical arbitrage trading of Berkshire Hathaway"
