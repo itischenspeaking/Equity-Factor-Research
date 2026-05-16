@@ -46,6 +46,7 @@ Chronological notes from the development process. These include exploratory work
 
 - [Week 1](research_log/week_01.md) — exploratory factor construction, basic metrics, and early statistical arbitrage experiments.
 - [Week 2](research_log/week_02.md) — factor attribution, residual momentum development, debugging, and interpretation.
+- [Week 3](research_log/week_03.md) — residual momentum forensics, S&P 1500 universe expansion, crisis/calendar/decile diagnostics, IC analysis, and documentation cleanup.
 
 ### Results
 
